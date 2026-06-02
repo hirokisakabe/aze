@@ -1,5 +1,6 @@
-// app.jsx — minimal Markdown notes on top of ~/notes/
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import type { CSSProperties } from "react";
+import type { Note } from "./data";
 import { NOTES, buildTree } from "./data";
 import { renderMarkdown } from "./markdown";
 import { Sidebar } from "./sidebar";
@@ -22,12 +23,12 @@ const TWEAK_DEFAULTS = {
   accent: "#5b6b86",
 };
 
-const VIBE_LABELS = { quiet: "静かな紙", editor: "エディタ", editorial: "雑誌" };
-const SIDEBAR_LABELS = { minimal: "ミニマル", guides: "ガイド線", markers: "マーカー", compact: "コンパクト" };
+const VIBE_LABELS: Record<string, string> = { quiet: "静かな紙", editor: "エディタ", editorial: "雑誌" };
+const SIDEBAR_LABELS: Record<string, string> = { minimal: "ミニマル", guides: "ガイド線", markers: "マーカー", compact: "コンパクト" };
 
-function ancestorsOf(path) {
+function ancestorsOf(path: string): string[] {
   const parts = path.split("/");
-  const out = [];
+  const out: string[] = [];
   let acc = "";
   for (let i = 0; i < parts.length - 1; i++) {
     acc = acc ? acc + "/" + parts[i] : parts[i];
@@ -36,7 +37,11 @@ function ancestorsOf(path) {
   return out;
 }
 
-function Breadcrumb({ path }) {
+interface BreadcrumbProps {
+  path: string;
+}
+
+function Breadcrumb({ path }: BreadcrumbProps) {
   const parts = path.replace(/\.md$/, "").split("/");
   return (
     <div className="crumb">
@@ -52,11 +57,16 @@ function Breadcrumb({ path }) {
   );
 }
 
-function NewNoteDialog({ onCreate, onCancel }) {
+interface NewNoteDialogProps {
+  onCreate: (path: string) => void;
+  onCancel: () => void;
+}
+
+function NewNoteDialog({ onCreate, onCancel }: NewNoteDialogProps) {
   const [val, setVal] = useState("");
-  const ref = useRef(null);
+  const ref = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    ref.current && ref.current.focus();
+    ref.current?.focus();
   }, []);
   const submit = () => {
     let p = val.trim();
@@ -93,27 +103,31 @@ function NewNoteDialog({ onCreate, onCancel }) {
 
 export default function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
-  const [notes, setNotes] = useState(() => NOTES.map((n) => ({ ...n })));
+  const [notes, setNotes] = useState<Note[]>(() => NOTES.map((n) => ({ ...n })));
   const [currentPath, setCurrentPath] = useState("daily/2024-06-02.md");
-  const [mode, setMode] = useState("view");
+  const [mode, setMode] = useState<"view" | "edit">("view");
   const [draft, setDraft] = useState("");
   const [creating, setCreating] = useState(false);
   const [expanded, setExpanded] = useState(() => new Set(ancestorsOf("daily/2024-06-02.md")));
-  const taRef = useRef(null);
+  const taRef = useRef<HTMLTextAreaElement>(null);
 
   const tree = useMemo(() => buildTree(notes), [notes]);
   const current = useMemo(() => notes.find((n) => n.path === currentPath), [notes, currentPath]);
 
-  const openNote = useCallback((path) => {
+  const openNote = useCallback((path: string) => {
     setCurrentPath(path);
     setMode("view");
     setExpanded(new Set(ancestorsOf(path)));
   }, []);
 
-  const toggleFolder = useCallback((path) => {
+  const toggleFolder = useCallback((path: string) => {
     setExpanded((prev) => {
       const next = new Set(prev);
-      next.has(path) ? next.delete(path) : next.add(path);
+      if (next.has(path)) {
+        next.delete(path);
+      } else {
+        next.add(path);
+      }
       return next;
     });
   }, []);
@@ -134,14 +148,14 @@ export default function App() {
   const cancelEdit = useCallback(() => setMode("view"), []);
 
   const createNote = useCallback(
-    (path) => {
+    (path: string) => {
       setCreating(false);
       const exists = notes.find((n) => n.path === path);
       if (exists) {
         openNote(path);
         return;
       }
-      const base = path.split("/").pop().replace(/\.md$/, "");
+      const base = path.split("/").pop()!.replace(/\.md$/, "");
       const body = `# ${base}\n\n`;
       setNotes((prev) => [...prev, { path, created: TODAY, updated: TODAY, body }]);
       setCurrentPath(path);
@@ -161,9 +175,9 @@ export default function App() {
   }, [mode]);
 
   useEffect(() => {
-    const onKey = (e) => {
-      const typing =
-        e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA";
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const typing = target.tagName === "INPUT" || target.tagName === "TEXTAREA";
       if (mode === "view" && !creating) {
         if ((e.key === "e" || e.key === "E") && !typing && !e.metaKey && !e.ctrlKey) {
           e.preventDefault();
@@ -193,11 +207,13 @@ export default function App() {
   return (
     <div
       className={"app vibe-" + t.vibe}
-      style={{
-        "--measure": t.measure + "px",
-        "--body-size": t.fontSize + "px",
-        "--accent": t.accent,
-      }}
+      style={
+        {
+          "--measure": t.measure + "px",
+          "--body-size": t.fontSize + "px",
+          "--accent": t.accent,
+        } as CSSProperties
+      }
     >
       <Sidebar
         tree={tree}
