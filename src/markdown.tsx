@@ -1,24 +1,19 @@
-// markdown.jsx — a small, dependency-free Markdown → React renderer.
-// Supports: # headings, paragraphs, > blockquotes, --- rules, fenced ```code```,
-// - / 1. lists, - [ ] / - [x] task checkboxes, and inline **bold** *italic*
-// `code` ~~strike~~ [link](url).
+import React, { createElement as h } from "react";
+import type { ReactNode } from "react";
 
-import { createElement as h } from "react";
-
-function parseInline(text, keyPrefix) {
-  const out = [];
+function parseInline(text: string, keyPrefix: string): ReactNode[] {
+  const out: ReactNode[] = [];
   let rest = text;
   let k = 0;
-  const push = (node) => out.push(node);
-  const re =
-    /(`[^`]+`)|(\*\*[^*]+\*\*)|(\*[^*]+\*)|(~~[^~]+~~)|(\[[^\]]+\]\([^)]+\))/;
+  const push = (node: ReactNode) => out.push(node);
+  const re = /(`[^`]+`)|(\*\*[^*]+\*\*)|(\*[^*]+\*)|(~~[^~]+~~)|(\[[^\]]+\]\([^)]+\))/;
   while (rest.length) {
     const m = rest.match(re);
     if (!m) {
       push(rest);
       break;
     }
-    if (m.index > 0) push(rest.slice(0, m.index));
+    if ((m.index ?? 0) > 0) push(rest.slice(0, m.index));
     const tok = m[0];
     const key = `${keyPrefix}-${k++}`;
     if (tok.startsWith("`")) {
@@ -31,28 +26,30 @@ function parseInline(text, keyPrefix) {
       push(h("em", { key }, parseInline(tok.slice(1, -1), key)));
     } else if (tok.startsWith("[")) {
       const lm = tok.match(/\[([^\]]+)\]\(([^)]+)\)/);
-      push(
-        h(
-          "a",
-          { key, href: lm[2], className: "md-link", onClick: (e) => e.preventDefault() },
-          lm[1]
-        )
-      );
+      if (lm) {
+        push(
+          h(
+            "a",
+            { key, href: lm[2], className: "md-link", onClick: (e: React.MouseEvent) => e.preventDefault() },
+            lm[1]
+          )
+        );
+      }
     }
-    rest = rest.slice(m.index + tok.length);
+    rest = rest.slice((m.index ?? 0) + tok.length);
   }
   return out;
 }
 
-export function renderMarkdown(src) {
+export function renderMarkdown(src: string): ReactNode[] {
   const lines = src.replace(/\r\n/g, "\n").split("\n");
-  const blocks = [];
+  const blocks: ReactNode[] = [];
   let i = 0;
   let key = 0;
   const nextKey = () => `b${key++}`;
 
   while (i < lines.length) {
-    let line = lines[i];
+    const line = lines[i];
 
     if (/^\s*$/.test(line)) {
       i++;
@@ -60,7 +57,7 @@ export function renderMarkdown(src) {
     }
 
     if (/^```/.test(line)) {
-      const buf = [];
+      const buf: string[] = [];
       i++;
       while (i < lines.length && !/^```/.test(lines[i])) {
         buf.push(lines[i]);
@@ -76,9 +73,9 @@ export function renderMarkdown(src) {
     const hm = line.match(/^(#{1,4})\s+(.+)$/);
     if (hm) {
       const lvl = hm[1].length;
-      const tag = "h" + lvl;
+      const tag = `h${lvl}` as "h1" | "h2" | "h3" | "h4";
       blocks.push(
-        h(tag, { key: nextKey(), className: "md-h md-h" + lvl }, parseInline(hm[2], nextKey()))
+        h(tag, { key: nextKey(), className: `md-h md-h${lvl}` }, parseInline(hm[2], nextKey()))
       );
       i++;
       continue;
@@ -91,7 +88,7 @@ export function renderMarkdown(src) {
     }
 
     if (/^\s*>\s?/.test(line)) {
-      const buf = [];
+      const buf: string[] = [];
       while (i < lines.length && /^\s*>\s?/.test(lines[i])) {
         buf.push(lines[i].replace(/^\s*>\s?/, ""));
         i++;
@@ -108,16 +105,18 @@ export function renderMarkdown(src) {
 
     if (/^\s*([-*]|\d+\.)\s+/.test(line)) {
       const ordered = /^\s*\d+\.\s+/.test(line);
-      const items = [];
+      const items: ReactNode[] = [];
+      let hasTask = false;
       while (i < lines.length && /^\s*([-*]|\d+\.)\s+/.test(lines[i])) {
         const raw = lines[i].replace(/^\s*([-*]|\d+\.)\s+/, "");
         const task = raw.match(/^\[([ xX])\]\s+(.*)$/);
         if (task) {
+          hasTask = true;
           const done = task[1].toLowerCase() === "x";
           items.push(
             h(
               "li",
-              { key: items.length, className: "md-li md-task" + (done ? " is-done" : "") },
+              { key: items.length, className: `md-li md-task${done ? " is-done" : ""}` },
               h("span", { className: "md-check", "aria-hidden": "true" }, done ? "✓" : ""),
               h("span", { className: "md-task-text" }, parseInline(task[2], nextKey()))
             )
@@ -130,9 +129,8 @@ export function renderMarkdown(src) {
         i++;
       }
       const tag = ordered ? "ol" : "ul";
-      const hasTask = items.some((it) => it.props.className.includes("md-task"));
       blocks.push(
-        h(tag, { key: nextKey(), className: "md-list" + (hasTask ? " md-tasklist" : "") }, items)
+        h(tag, { key: nextKey(), className: `md-list${hasTask ? " md-tasklist" : ""}` }, items)
       );
       continue;
     }
@@ -152,7 +150,9 @@ export function renderMarkdown(src) {
         "p",
         { key: nextKey(), className: "md-p" },
         buf.flatMap((b, idx) =>
-          idx === 0 ? parseInline(b, nextKey()) : [h("br", { key: "br" + idx }), ...parseInline(b, nextKey())]
+          idx === 0
+            ? parseInline(b, nextKey())
+            : [h("br", { key: `br${idx}` }), ...parseInline(b, nextKey())]
         )
       )
     );

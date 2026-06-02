@@ -1,7 +1,10 @@
-// sidebar.jsx — file tree for ~/notes/ with several "presentation" variants.
-// variant: 'minimal' | 'guides' | 'markers' | 'compact'
+import type { TreeNode as TreeNodeData } from "./data";
 
-function Chevron({ open }) {
+interface ChevronProps {
+  open: boolean;
+}
+
+function Chevron({ open }: ChevronProps) {
   return (
     <svg
       className={"sb-chevron" + (open ? " is-open" : "")}
@@ -22,7 +25,16 @@ function Chevron({ open }) {
   );
 }
 
-function TreeNode({ node, expanded, currentPath, onToggle, onOpen, variant }) {
+interface TreeNodeProps {
+  node: TreeNodeData;
+  expanded: Set<string>;
+  currentPath: string;
+  onToggle: (path: string) => void;
+  onOpen: (path: string) => void;
+  variant: string;
+}
+
+function TreeNode({ node, expanded, currentPath, onToggle, onOpen, variant }: TreeNodeProps) {
   const isFolder = node.type === "folder";
   const open = expanded.has(node.path);
   const active = node.path === currentPath;
@@ -46,7 +58,7 @@ function TreeNode({ node, expanded, currentPath, onToggle, onOpen, variant }) {
         </div>
         {open && (
           <div className="sb-children">
-            {node.children.map((c) => (
+            {(node.children ?? []).map((c) => (
               <TreeNode
                 key={c.path}
                 node={c}
@@ -80,7 +92,18 @@ function TreeNode({ node, expanded, currentPath, onToggle, onOpen, variant }) {
   );
 }
 
-export function Sidebar({ tree, expanded, currentPath, onToggle, onOpen, onNew, variant, count }) {
+interface SidebarProps {
+  tree: TreeNodeData;
+  expanded: Set<string>;
+  currentPath: string;
+  onToggle: (path: string) => void;
+  onOpen: (path: string) => void;
+  onNew: () => void;
+  variant: string;
+  count: number;
+}
+
+export function Sidebar({ tree, expanded, currentPath, onToggle, onOpen, onNew, variant, count }: SidebarProps) {
   return (
     <aside className={"sidebar sb-variant-" + variant}>
       <div className="sb-brand">
@@ -97,7 +120,7 @@ export function Sidebar({ tree, expanded, currentPath, onToggle, onOpen, onNew, 
       </div>
       <div className="sb-rootlabel">~/notes</div>
       <div className="sb-tree">
-        {tree.children.map((c) => (
+        {(tree.children ?? []).map((c) => (
           <TreeNode
             key={c.path}
             node={c}

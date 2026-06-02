@@ -1,8 +1,20 @@
-// data.jsx — sample notes living under ~/notes/
-// Each note: { path, created, updated, body }. Title is derived from the first
-// H1 in the body (falling back to the filename). The tree is built from paths.
+export interface Note {
+  path: string;
+  created: string;
+  updated: string;
+  body: string;
+}
 
-export const NOTES = [
+export interface TreeNode {
+  name: string;
+  path: string;
+  type: "file" | "folder";
+  children?: TreeNode[];
+}
+
+type FolderNode = TreeNode & { children: TreeNode[] };
+
+export const NOTES: Note[] = [
   {
     path: "inbox.md",
     created: "2024-05-28",
@@ -201,36 +213,33 @@ DBもクラウドも要らない。\`~/notes/\` をただ開くだけ。
   },
 ];
 
-export function noteTitle(note) {
+export function noteTitle(note: Note): string {
   const m = note.body.match(/^#\s+(.+)$/m);
   if (m) return m[1].trim();
-  const base = note.path.split("/").pop().replace(/\.md$/, "");
+  const base = note.path.split("/").pop()!.replace(/\.md$/, "");
   return base;
 }
 
-export function buildTree(notes) {
-  const root = { name: "~/notes", path: "", type: "folder", children: [] };
+export function buildTree(notes: Note[]): TreeNode {
+  const root: FolderNode = { name: "~/notes", path: "", type: "folder", children: [] };
   for (const note of notes) {
     const parts = note.path.split("/");
-    let cur = root;
+    let cur: FolderNode = root;
     let acc = "";
     parts.forEach((part, i) => {
       acc = acc ? acc + "/" + part : part;
       const isFile = i === parts.length - 1;
       let child = cur.children.find((c) => c.name === part);
       if (!child) {
-        child = {
-          name: part,
-          path: acc,
-          type: isFile ? "file" : "folder",
-          children: isFile ? undefined : [],
-        };
+        child = isFile
+          ? { name: part, path: acc, type: "file" }
+          : { name: part, path: acc, type: "folder", children: [] };
         cur.children.push(child);
       }
-      if (!isFile) cur = child;
+      if (!isFile) cur = child as FolderNode;
     });
   }
-  const sortRec = (node) => {
+  const sortRec = (node: TreeNode) => {
     if (!node.children) return;
     node.children.sort((a, b) => {
       if (a.type !== b.type) return a.type === "folder" ? -1 : 1;
