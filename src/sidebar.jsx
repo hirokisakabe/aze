@@ -80,7 +80,7 @@ function TreeNode({ node, expanded, currentPath, onToggle, onOpen, variant }) {
   );
 }
 
-function Sidebar({ tree, expanded, currentPath, onToggle, onOpen, onNew, variant, count }) {
+export function Sidebar({ tree, expanded, currentPath, onToggle, onOpen, onNew, variant, count }) {
   return (
     <aside className={"sidebar sb-variant-" + variant}>
       <div className="sb-brand">
@@ -113,5 +113,3 @@ function Sidebar({ tree, expanded, currentPath, onToggle, onOpen, onNew, variant
     </aside>
   );
 }
-
-Object.assign(window, { Sidebar });

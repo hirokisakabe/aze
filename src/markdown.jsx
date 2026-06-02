@@ -3,7 +3,7 @@
 // - / 1. lists, - [ ] / - [x] task checkboxes, and inline **bold** *italic*
 // `code` ~~strike~~ [link](url).
 
-const { createElement: h } = React;
+import { createElement as h } from "react";
 
 function parseInline(text, keyPrefix) {
   const out = [];
@@ -44,7 +44,7 @@ function parseInline(text, keyPrefix) {
   return out;
 }
 
-function renderMarkdown(src) {
+export function renderMarkdown(src) {
   const lines = src.replace(/\r\n/g, "\n").split("\n");
   const blocks = [];
   let i = 0;
@@ -160,5 +160,3 @@ function renderMarkdown(src) {
 
   return blocks;
 }
-
-Object.assign(window, { renderMarkdown });

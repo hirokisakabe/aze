@@ -1,5 +1,16 @@
 // app.jsx — minimal Markdown notes on top of ~/notes/
-const { useState, useEffect, useRef, useMemo, useCallback } = React;
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { NOTES, buildTree } from "./data";
+import { renderMarkdown } from "./markdown";
+import { Sidebar } from "./sidebar";
+import {
+  useTweaks,
+  TweaksPanel,
+  TweakSection,
+  TweakRadio,
+  TweakSlider,
+  TweakColor,
+} from "./tweaks-panel";
 
 const TODAY = "2024-06-02";
 
@@ -80,7 +91,7 @@ function NewNoteDialog({ onCreate, onCancel }) {
   );
 }
 
-function App() {
+export default function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const [notes, setNotes] = useState(() => NOTES.map((n) => ({ ...n })));
   const [currentPath, setCurrentPath] = useState("daily/2024-06-02.md");
@@ -294,5 +305,3 @@ function App() {
     </div>
   );
 }
-
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
