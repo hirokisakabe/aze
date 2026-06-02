@@ -2,7 +2,7 @@
 // Each note: { path, created, updated, body }. Title is derived from the first
 // H1 in the body (falling back to the filename). The tree is built from paths.
 
-const NOTES = [
+export const NOTES = [
   {
     path: "inbox.md",
     created: "2024-05-28",
@@ -201,14 +201,14 @@ DBもクラウドも要らない。\`~/notes/\` をただ開くだけ。
   },
 ];
 
-function noteTitle(note) {
+export function noteTitle(note) {
   const m = note.body.match(/^#\s+(.+)$/m);
   if (m) return m[1].trim();
   const base = note.path.split("/").pop().replace(/\.md$/, "");
   return base;
 }
 
-function buildTree(notes) {
+export function buildTree(notes) {
   const root = { name: "~/notes", path: "", type: "folder", children: [] };
   for (const note of notes) {
     const parts = note.path.split("/");
@@ -241,5 +241,3 @@ function buildTree(notes) {
   sortRec(root);
   return root;
 }
-
-Object.assign(window, { NOTES, noteTitle, buildTree });
