@@ -1,7 +1,9 @@
 // app.jsx — minimal Markdown notes on top of ~/notes/
 const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
-const TODAY = "2024-06-02";
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
 
 const TWEAK_DEFAULTS = {
   vibe: "editor",
@@ -82,7 +84,7 @@ function NewNoteDialog({ onCreate, onCancel }) {
 
 function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
-  const [notes, setNotes] = useState(() => NOTES.map((n) => ({ ...n })));
+  const notes = useLiveQuery(() => db.notes.toArray(), []) ?? [];
   const [currentPath, setCurrentPath] = useState("daily/2024-06-02.md");
   const [mode, setMode] = useState("view");
   const [draft, setDraft] = useState("");
@@ -113,17 +115,15 @@ function App() {
     setMode("edit");
   }, [current]);
 
-  const saveEdit = useCallback(() => {
-    setNotes((prev) =>
-      prev.map((n) => (n.path === currentPath ? { ...n, body: draft, updated: TODAY } : n))
-    );
+  const saveEdit = useCallback(async () => {
+    await db.notes.put({ ...current, body: draft, updated: today() });
     setMode("view");
-  }, [draft, currentPath]);
+  }, [draft, current]);
 
   const cancelEdit = useCallback(() => setMode("view"), []);
 
   const createNote = useCallback(
-    (path) => {
+    async (path) => {
       setCreating(false);
       const exists = notes.find((n) => n.path === path);
       if (exists) {
@@ -132,7 +132,8 @@ function App() {
       }
       const base = path.split("/").pop().replace(/\.md$/, "");
       const body = `# ${base}\n\n`;
-      setNotes((prev) => [...prev, { path, created: TODAY, updated: TODAY, body }]);
+      const now = today();
+      await db.notes.put({ path, created: now, updated: now, body });
       setCurrentPath(path);
       setExpanded(new Set(ancestorsOf(path)));
       setDraft(body);
