@@ -2,7 +2,8 @@
 const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 const TWEAK_DEFAULTS = {
@@ -116,8 +117,12 @@ function App() {
   }, [current]);
 
   const saveEdit = useCallback(async () => {
-    await db.notes.put({ ...current, body: draft, updated: today() });
-    setMode("view");
+    try {
+      await db.notes.put({ ...current, body: draft, updated: today() });
+      setMode("view");
+    } catch (err) {
+      console.error("保存に失敗しました:", err);
+    }
   }, [draft, current]);
 
   const cancelEdit = useCallback(() => setMode("view"), []);
@@ -133,7 +138,11 @@ function App() {
       const base = path.split("/").pop().replace(/\.md$/, "");
       const body = `# ${base}\n\n`;
       const now = today();
-      await db.notes.put({ path, created: now, updated: now, body });
+      try {
+        await db.notes.put({ path, created: now, updated: now, body });
+      } catch (err) {
+        console.error("ノートの作成に失敗しました:", err);
+      }
       setCurrentPath(path);
       setExpanded(new Set(ancestorsOf(path)));
       setDraft(body);
