@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import type { CSSProperties } from "react";
 import type { Note } from "./data";
 import { NOTES, buildTree } from "./data";
 import { renderMarkdown } from "./markdown";
@@ -211,7 +212,7 @@ export default function App() {
           "--measure": t.measure + "px",
           "--body-size": t.fontSize + "px",
           "--accent": t.accent,
-        } as React.CSSProperties
+        } as CSSProperties
       }
     >
       <Sidebar
