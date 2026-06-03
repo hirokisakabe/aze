@@ -1,7 +1,7 @@
 import React, { createElement as h } from "react";
 import type { ReactNode } from "react";
 
-function parseInline(text: string, keyPrefix: string): ReactNode[] {
+export function parseInline(text: string, keyPrefix: string): ReactNode[] {
   const out: ReactNode[] = [];
   let rest = text;
   let k = 0;
