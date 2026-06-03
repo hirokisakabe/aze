@@ -101,4 +101,27 @@ describe('MarkdownPreview', () => {
     expect(container.querySelector('th')).not.toBeNull();
     expect(container.querySelector('td')).not.toBeNull();
   });
+
+  it('段落内の単一改行を br 要素として扱う', () => {
+    const { container } = render(<MarkdownPreview content={'foo\nbar'} />);
+    expect(container.querySelector('br')).not.toBeNull();
+  });
+
+  it('コードブロック内の code に md-code クラスが付かない', () => {
+    const { container } = render(<MarkdownPreview content={'```\nconst x = 1;\n```'} />);
+    const code = container.querySelector('pre code');
+    expect(code).not.toBeNull();
+    expect(code!.className).not.toContain('md-code');
+  });
+
+  it('タスクリストに native checkbox が残らない', () => {
+    const { container } = render(<MarkdownPreview content={'- [ ] TODO\n- [x] Done'} />);
+    expect(container.querySelector('input[type="checkbox"]')).toBeNull();
+  });
+
+  it('引用内の段落が p.md-p として出力される', () => {
+    const { container } = render(<MarkdownPreview content={'> 引用テキスト'} />);
+    const p = container.querySelector('blockquote p');
+    expect(p).not.toBeNull();
+  });
 });
