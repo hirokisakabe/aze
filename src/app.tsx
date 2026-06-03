@@ -88,7 +88,7 @@ function NewNoteDialog({ onCreate, onCancel }: NewNoteDialogProps) {
             spellCheck={false}
             onChange={(e) => setVal(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') submit();
+              if (e.key === 'Enter' && !e.nativeEvent.isComposing) submit();
               if (e.key === 'Escape') onCancel();
             }}
           />

@@ -13,7 +13,8 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css,html}\" \"e2e/**/*.ts\"",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "knip": "knip"
   },
   "dependencies": {
     "dexie": "^4.4.2",
@@ -31,7 +32,6 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
-    "@types/jszip": "^3.4.0",
     "@types/node": "^25.9.1",
     "@types/react": "^18.3.29",
     "@types/react-dom": "^18.3.7",
@@ -42,6 +42,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^29.1.1",
+    "knip": "^6.14.2",
     "prettier": "^3.8.3",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.60.0",
