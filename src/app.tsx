@@ -107,11 +107,14 @@ export default function App() {
   const tree = useMemo(() => buildTree(notes), [notes]);
   const current = useMemo(() => notes.find((n) => n.path === currentPath), [notes, currentPath]);
 
-  const openNote = useCallback((path: string) => {
+  const openNote = useCallback(async (path: string) => {
+    if (mode === "edit" && current && draft !== current.body) {
+      await db.notes.put({ ...current, body: draft, updated: TODAY });
+    }
     setCurrentPath(path);
     setMode("view");
     setExpanded(new Set(ancestorsOf(path)));
-  }, []);
+  }, [mode, current, draft]);
 
   const toggleFolder = useCallback((path: string) => {
     setExpanded((prev) => {
