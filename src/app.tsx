@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import type { CSSProperties } from 'react';
 import JSZip from 'jszip';
 import { NOTES, buildTree, ancestorsOf } from './data';
@@ -73,6 +73,68 @@ function renderWsOverlay(text: string): React.ReactNode[] {
   }
   flush();
   return out;
+}
+
+const INDENT = '  ';
+
+interface IndentResult {
+  value: string;
+  selectionStart: number;
+  selectionEnd: number;
+}
+
+function lineBoundsForSelection(value: string, selectionStart: number, selectionEnd: number) {
+  const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
+  const adjustedEnd =
+    selectionEnd > selectionStart && value[selectionEnd - 1] === '\n'
+      ? selectionEnd - 1
+      : selectionEnd;
+  const nextLineBreak = value.indexOf('\n', adjustedEnd);
+  const lineEnd = nextLineBreak === -1 ? value.length : nextLineBreak;
+  return { lineStart, lineEnd };
+}
+
+function indentText(value: string, selectionStart: number, selectionEnd: number): IndentResult {
+  const { lineStart, lineEnd } = lineBoundsForSelection(value, selectionStart, selectionEnd);
+  const lines = value.slice(lineStart, lineEnd).split('\n');
+  const indented = lines.map((line) => `${INDENT}${line}`).join('\n');
+  const inserted = lines.length * INDENT.length;
+  return {
+    value: value.slice(0, lineStart) + indented + value.slice(lineEnd),
+    selectionStart: selectionStart + INDENT.length,
+    selectionEnd:
+      selectionStart === selectionEnd ? selectionEnd + INDENT.length : selectionEnd + inserted,
+  };
+}
+
+function unindentText(value: string, selectionStart: number, selectionEnd: number): IndentResult {
+  const { lineStart, lineEnd } = lineBoundsForSelection(value, selectionStart, selectionEnd);
+  const lines = value.slice(lineStart, lineEnd).split('\n');
+  let cursor = lineStart;
+  let selectionStartOffset = 0;
+  let selectionEndOffset = 0;
+
+  const unindented = lines
+    .map((line) => {
+      const removeCount = line.startsWith(INDENT) ? INDENT.length : line.startsWith(' ') ? 1 : 0;
+      const removeStart = cursor;
+      const removeEnd = cursor + removeCount;
+      if (removeCount > 0) {
+        if (removeEnd <= selectionStart) selectionStartOffset += removeCount;
+        else if (removeStart < selectionStart) selectionStartOffset += selectionStart - removeStart;
+        if (removeEnd <= selectionEnd) selectionEndOffset += removeCount;
+        else if (removeStart < selectionEnd) selectionEndOffset += selectionEnd - removeStart;
+      }
+      cursor += line.length + 1;
+      return line.slice(removeCount);
+    })
+    .join('\n');
+
+  return {
+    value: value.slice(0, lineStart) + unindented + value.slice(lineEnd),
+    selectionStart: Math.max(lineStart, selectionStart - selectionStartOffset),
+    selectionEnd: Math.max(lineStart, selectionEnd - selectionEndOffset),
+  };
 }
 
 interface BreadcrumbProps {
@@ -150,6 +212,9 @@ export default function App() {
   const [expanded, setExpanded] = useState(() => new Set<string>());
   const taRef = useRef<HTMLTextAreaElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const pendingSelectionRef = useRef<Pick<IndentResult, 'selectionStart' | 'selectionEnd'> | null>(
+    null
+  );
   const pathInitializedRef = useRef(false);
 
   const tree = useMemo(() => buildTree(notes), [notes]);
@@ -218,6 +283,29 @@ export default function App() {
     await db.notes.put({ ...current, body: draft, updated: TODAY });
     setMode('view');
   }, [draft, current]);
+
+  useLayoutEffect(() => {
+    const pendingSelection = pendingSelectionRef.current;
+    if (!pendingSelection) return;
+    pendingSelectionRef.current = null;
+    taRef.current?.setSelectionRange(
+      pendingSelection.selectionStart,
+      pendingSelection.selectionEnd
+    );
+  }, [draft]);
+
+  const updateTextareaIndent = useCallback((shiftKey: boolean) => {
+    const textarea = taRef.current;
+    if (!textarea) return;
+    const next = shiftKey
+      ? unindentText(textarea.value, textarea.selectionStart, textarea.selectionEnd)
+      : indentText(textarea.value, textarea.selectionStart, textarea.selectionEnd);
+    pendingSelectionRef.current = {
+      selectionStart: next.selectionStart,
+      selectionEnd: next.selectionEnd,
+    };
+    setDraft(next.value);
+  }, []);
 
   const cancelEdit = useCallback(() => setMode('view'), []);
 
@@ -384,6 +472,11 @@ export default function App() {
                     value={draft}
                     spellCheck={false}
                     onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Tab') return;
+                      e.preventDefault();
+                      updateTextareaIndent(e.shiftKey);
+                    }}
                   />
                 </div>
               </div>
