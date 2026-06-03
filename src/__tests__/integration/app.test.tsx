@@ -111,7 +111,7 @@ describe('新規ノートダイアログからノートを作成できる', () =
 
     await new Promise((r) => setTimeout(r, 50));
 
-    expect(screen.getByPlaceholderText('ideas/new-idea.md')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('ideas/new-idea.md')).not.toBeNull();
 
     const saved = await db.notes.get('ime-note.md');
     expect(saved).toBeUndefined();
