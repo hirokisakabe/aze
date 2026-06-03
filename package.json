@@ -9,8 +9,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src e2e",
-    "format": "prettier --write \"src/**/*.{ts,tsx,css,html}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,css,html}\"",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css,html}\" \"e2e/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css,html}\" \"e2e/**/*.ts\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test"
