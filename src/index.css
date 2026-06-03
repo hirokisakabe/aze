@@ -498,6 +498,12 @@ ul.md-list:not(.md-tasklist) > li::before {
   flex-direction: column;
   padding: 60px 72px 24px;
 }
+.editor-area-wrap {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
 .editor-area {
   flex: 1;
   width: 100%;
@@ -511,6 +517,35 @@ ul.md-list:not(.md-tasklist) > li::before {
   color: var(--ink);
   caret-color: var(--accent);
   min-height: 55vh;
+  padding: 0;
+}
+.editor-ws-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-family: var(--mono);
+  font-size: calc(var(--body-size) - 1px);
+  line-height: 1.85;
+  white-space: pre-wrap;
+  overflow: hidden;
+  color: transparent;
+  padding: 0;
+  margin: 0;
+  border: none;
+  tab-size: 8;
+}
+.ws-dot {
+  color: color-mix(in oklab, var(--ink) 35%, transparent);
+}
+.ws-tab {
+  color: transparent;
+  position: relative;
+}
+.ws-tab::before {
+  content: '→';
+  position: absolute;
+  left: 0;
+  color: color-mix(in oklab, var(--ink) 35%, transparent);
 }
 .editor-bar {
   position: sticky;

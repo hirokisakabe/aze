@@ -65,6 +65,14 @@ const __TWEAKS_STYLE = `
     border-radius:6px;cursor:default;padding:4px 6px;line-height:1.2;
     overflow-wrap:anywhere}
 
+  .twk-toggle{position:relative;width:32px;height:18px;border:0;border-radius:999px;
+    background:rgba(0,0,0,.15);transition:background .15s;cursor:default;padding:0}
+  .twk-toggle[data-on="1"]{background:#34c759}
+  .twk-toggle i{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+  .twk-toggle[data-on="1"] i{transform:translateX(14px)}
+
+
   .twk-swatch{appearance:none;-webkit-appearance:none;width:56px;height:22px;
     border:.5px solid rgba(0,0,0,.1);border-radius:6px;padding:0;cursor:default;
     background:transparent;flex-shrink:0}
@@ -296,6 +304,32 @@ export function TweakSlider({
         onChange={(e) => onChange(Number(e.target.value))}
       />
     </TweakRow>
+  );
+}
+
+interface TweakToggleProps {
+  label: string;
+  value: boolean;
+  onChange: (value: boolean) => void;
+}
+
+export function TweakToggle({ label, value, onChange }: TweakToggleProps) {
+  return (
+    <div className="twk-row twk-row-h">
+      <div className="twk-lbl">
+        <span>{label}</span>
+      </div>
+      <button
+        type="button"
+        className="twk-toggle"
+        data-on={value ? '1' : '0'}
+        role="switch"
+        aria-checked={!!value}
+        onClick={() => onChange(!value)}
+      >
+        <i />
+      </button>
+    </div>
   );
 }
 
