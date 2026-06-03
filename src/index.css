@@ -11,8 +11,8 @@
   --hover: #ece8e0;
   --accent: #5b6b86;
 
-  --sans: "Zen Kaku Gothic New", system-ui, sans-serif;
-  --mono: "DM Mono", "Zen Kaku Gothic New", ui-monospace, monospace;
+  --sans: 'Zen Kaku Gothic New', system-ui, sans-serif;
+  --mono: 'DM Mono', 'Zen Kaku Gothic New', ui-monospace, monospace;
 
   --measure: 660px;
   --body-size: 17px;
@@ -343,7 +343,7 @@ ul.md-list:not(.md-tasklist) > li {
   position: relative;
 }
 ul.md-list:not(.md-tasklist) > li::before {
-  content: "–";
+  content: '–';
   position: absolute;
   left: -1.1em;
   color: var(--ink-faint);

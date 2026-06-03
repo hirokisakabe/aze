@@ -1,5 +1,5 @@
-import Dexie, { type Table } from "dexie";
-import type { Note } from "./data";
+import Dexie, { type Table } from 'dexie';
+import type { Note } from './data';
 
 interface Setting {
   key: string;
@@ -11,9 +11,9 @@ class AzeDB extends Dexie {
   settings!: Table<Setting, string>;
 
   constructor() {
-    super("aze");
-    this.version(1).stores({ notes: "path, created, updated" });
-    this.version(2).stores({ notes: "path, created, updated", settings: "key" });
+    super('aze');
+    this.version(1).stores({ notes: 'path, created, updated' });
+    this.version(2).stores({ notes: 'path, created, updated', settings: 'key' });
   }
 }
 

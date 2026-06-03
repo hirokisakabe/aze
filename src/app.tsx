@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import type { CSSProperties } from "react";
-import JSZip from "jszip";
-import { NOTES, buildTree, ancestorsOf } from "./data";
-import { db } from "./db";
-import { useLiveQuery } from "dexie-react-hooks";
-import { renderMarkdown } from "./markdown";
-import { Sidebar } from "./sidebar";
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import type { CSSProperties } from 'react';
+import JSZip from 'jszip';
+import { NOTES, buildTree, ancestorsOf } from './data';
+import { db } from './db';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { renderMarkdown } from './markdown';
+import { Sidebar } from './sidebar';
 import {
   useTweaks,
   TweaksPanel,
@@ -13,34 +13,43 @@ import {
   TweakRadio,
   TweakSlider,
   TweakColor,
-} from "./tweaks-panel";
+} from './tweaks-panel';
 
-const TODAY = new Intl.DateTimeFormat("sv-SE").format(new Date());
+const TODAY = new Intl.DateTimeFormat('sv-SE').format(new Date());
 
 const TWEAK_DEFAULTS = {
-  vibe: "editor",
-  sidebar: "compact",
+  vibe: 'editor',
+  sidebar: 'compact',
   measure: 1200,
   fontSize: 17,
-  accent: "#5b6b86",
+  accent: '#5b6b86',
 };
 
-const VIBE_LABELS: Record<string, string> = { quiet: "静かな紙", editor: "エディタ", editorial: "雑誌" };
-const SIDEBAR_LABELS: Record<string, string> = { minimal: "ミニマル", guides: "ガイド線", markers: "マーカー", compact: "コンパクト" };
+const VIBE_LABELS: Record<string, string> = {
+  quiet: '静かな紙',
+  editor: 'エディタ',
+  editorial: '雑誌',
+};
+const SIDEBAR_LABELS: Record<string, string> = {
+  minimal: 'ミニマル',
+  guides: 'ガイド線',
+  markers: 'マーカー',
+  compact: 'コンパクト',
+};
 
 interface BreadcrumbProps {
   path: string;
 }
 
 function Breadcrumb({ path }: BreadcrumbProps) {
-  const parts = path.replace(/\.md$/, "").split("/");
+  const parts = path.replace(/\.md$/, '').split('/');
   return (
     <div className="crumb">
       <span className="crumb-bracket">[</span>
       {parts.map((p, i) => (
         <span className="crumb-seg" key={i}>
           {i > 0 && <span className="crumb-sep">/</span>}
-          <span className={i === parts.length - 1 ? "crumb-leaf" : ""}>{p}</span>
+          <span className={i === parts.length - 1 ? 'crumb-leaf' : ''}>{p}</span>
         </span>
       ))}
       <span className="crumb-bracket">]</span>
@@ -54,7 +63,7 @@ interface NewNoteDialogProps {
 }
 
 function NewNoteDialog({ onCreate, onCancel }: NewNoteDialogProps) {
-  const [val, setVal] = useState("");
+  const [val, setVal] = useState('');
   const ref = useRef<HTMLInputElement>(null);
   useEffect(() => {
     ref.current?.focus();
@@ -62,7 +71,7 @@ function NewNoteDialog({ onCreate, onCancel }: NewNoteDialogProps) {
   const submit = () => {
     let p = val.trim();
     if (!p) return;
-    if (!p.endsWith(".md")) p += ".md";
+    if (!p.endsWith('.md')) p += '.md';
     onCreate(p);
   };
   return (
@@ -79,8 +88,8 @@ function NewNoteDialog({ onCreate, onCancel }: NewNoteDialogProps) {
             spellCheck={false}
             onChange={(e) => setVal(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") submit();
-              if (e.key === "Escape") onCancel();
+              if (e.key === 'Enter') submit();
+              if (e.key === 'Escape') onCancel();
             }}
           />
         </div>
@@ -96,9 +105,9 @@ export default function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const rawNotes = useLiveQuery(() => db.notes.toArray(), []);
   const notes = useMemo(() => rawNotes ?? [], [rawNotes]);
-  const [currentPath, setCurrentPath] = useState("");
-  const [mode, setMode] = useState<"view" | "edit">("view");
-  const [draft, setDraft] = useState("");
+  const [currentPath, setCurrentPath] = useState('');
+  const [mode, setMode] = useState<'view' | 'edit'>('view');
+  const [draft, setDraft] = useState('');
   const [creating, setCreating] = useState(false);
   const [expanded, setExpanded] = useState(() => new Set<string>());
   const taRef = useRef<HTMLTextAreaElement>(null);
@@ -107,18 +116,21 @@ export default function App() {
   const tree = useMemo(() => buildTree(notes), [notes]);
   const current = useMemo(() => notes.find((n) => n.path === currentPath), [notes, currentPath]);
 
-  const openNote = useCallback(async (path: string) => {
-    if (mode === "edit" && current && path !== currentPath && draft !== current.body) {
-      try {
-        await db.notes.put({ ...current, body: draft, updated: TODAY });
-      } catch {
-        return;
+  const openNote = useCallback(
+    async (path: string) => {
+      if (mode === 'edit' && current && path !== currentPath && draft !== current.body) {
+        try {
+          await db.notes.put({ ...current, body: draft, updated: TODAY });
+        } catch {
+          return;
+        }
       }
-    }
-    setCurrentPath(path);
-    setMode("view");
-    setExpanded(new Set(ancestorsOf(path)));
-  }, [mode, current, currentPath, draft]);
+      setCurrentPath(path);
+      setMode('view');
+      setExpanded(new Set(ancestorsOf(path)));
+    },
+    [mode, current, currentPath, draft]
+  );
 
   const toggleFolder = useCallback((path: string) => {
     setExpanded((prev) => {
@@ -143,7 +155,7 @@ export default function App() {
   useEffect(() => {
     if (pathInitializedRef.current || notes.length === 0) return;
     pathInitializedRef.current = true;
-    db.settings.get("lastOpenedPath").then((setting) => {
+    db.settings.get('lastOpenedPath').then((setting) => {
       const saved = setting?.value;
       const path = saved && notes.some((n) => n.path === saved) ? saved : notes[0].path;
       setCurrentPath(path);
@@ -153,22 +165,22 @@ export default function App() {
 
   useEffect(() => {
     if (!currentPath) return;
-    db.settings.put({ key: "lastOpenedPath", value: currentPath });
+    db.settings.put({ key: 'lastOpenedPath', value: currentPath });
   }, [currentPath]);
 
   const enterEdit = useCallback(() => {
     if (!current) return;
     setDraft(current.body);
-    setMode("edit");
+    setMode('edit');
   }, [current]);
 
   const saveEdit = useCallback(async () => {
     if (!current) return;
     await db.notes.put({ ...current, body: draft, updated: TODAY });
-    setMode("view");
+    setMode('view');
   }, [draft, current]);
 
-  const cancelEdit = useCallback(() => setMode("view"), []);
+  const cancelEdit = useCallback(() => setMode('view'), []);
 
   const createNote = useCallback(
     async (path: string) => {
@@ -178,13 +190,13 @@ export default function App() {
         openNote(path);
         return;
       }
-      const base = path.split("/").pop()!.replace(/\.md$/, "");
+      const base = path.split('/').pop()!.replace(/\.md$/, '');
       const body = `# ${base}\n\n`;
       await db.notes.put({ path, created: TODAY, updated: TODAY, body });
       setCurrentPath(path);
       setExpanded(new Set(ancestorsOf(path)));
       setDraft(body);
-      setMode("edit");
+      setMode('edit');
     },
     [openNote]
   );
@@ -195,17 +207,17 @@ export default function App() {
     for (const note of all) {
       zip.file(note.path, note.body);
     }
-    const blob = await zip.generateAsync({ type: "blob" });
+    const blob = await zip.generateAsync({ type: 'blob' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
+    const a = document.createElement('a');
     a.href = url;
-    a.download = "notes.zip";
+    a.download = 'notes.zip';
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 0);
   }, []);
 
   useEffect(() => {
-    if (mode === "edit" && taRef.current) {
+    if (mode === 'edit' && taRef.current) {
       const ta = taRef.current;
       ta.focus();
       ta.setSelectionRange(ta.value.length, ta.value.length);
@@ -215,41 +227,41 @@ export default function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      const typing = target.tagName === "INPUT" || target.tagName === "TEXTAREA";
-      if (mode === "view" && !creating) {
-        if ((e.key === "e" || e.key === "E") && !typing && !e.metaKey && !e.ctrlKey) {
+      const typing = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+      if (mode === 'view' && !creating) {
+        if ((e.key === 'e' || e.key === 'E') && !typing && !e.metaKey && !e.ctrlKey) {
           e.preventDefault();
           enterEdit();
         }
-        if (e.key === "n" && !typing && !e.metaKey && !e.ctrlKey) {
+        if (e.key === 'n' && !typing && !e.metaKey && !e.ctrlKey) {
           e.preventDefault();
           setCreating(true);
         }
-      } else if (mode === "edit") {
-        if ((e.metaKey || e.ctrlKey) && (e.key === "s" || e.key === "Enter")) {
+      } else if (mode === 'edit') {
+        if ((e.metaKey || e.ctrlKey) && (e.key === 's' || e.key === 'Enter')) {
           e.preventDefault();
           saveEdit();
         }
-        if (e.key === "Escape") {
+        if (e.key === 'Escape') {
           e.preventDefault();
           cancelEdit();
         }
       }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, [mode, creating, enterEdit, saveEdit, cancelEdit]);
 
   const rendered = useMemo(() => (current ? renderMarkdown(current.body) : null), [current]);
 
   return (
     <div
-      className={"app vibe-" + t.vibe}
+      className={'app vibe-' + t.vibe}
       style={
         {
-          "--measure": t.measure + "px",
-          "--body-size": t.fontSize + "px",
-          "--accent": t.accent,
+          '--measure': t.measure + 'px',
+          '--body-size': t.fontSize + 'px',
+          '--accent': t.accent,
         } as CSSProperties
       }
     >
@@ -267,7 +279,7 @@ export default function App() {
 
       <main className="main">
         {current ? (
-          mode === "view" ? (
+          mode === 'view' ? (
             <div className="reader" key={currentPath}>
               <div className="reader-inner">
                 <Breadcrumb path={current.path} />
@@ -322,13 +334,13 @@ export default function App() {
           label="雰囲気"
           value={t.vibe}
           options={Object.entries(VIBE_LABELS).map(([value, label]) => ({ value, label }))}
-          onChange={(v) => setTweak("vibe", v)}
+          onChange={(v) => setTweak('vibe', v)}
         />
         <TweakRadio
           label="サイドバー"
           value={t.sidebar}
           options={Object.entries(SIDEBAR_LABELS).map(([value, label]) => ({ value, label }))}
-          onChange={(v) => setTweak("sidebar", v)}
+          onChange={(v) => setTweak('sidebar', v)}
         />
         <TweakSection label="読みやすさ" />
         <TweakSlider
@@ -338,7 +350,7 @@ export default function App() {
           max={1400}
           step={20}
           unit="px"
-          onChange={(v) => setTweak("measure", v)}
+          onChange={(v) => setTweak('measure', v)}
         />
         <TweakSlider
           label="文字サイズ"
@@ -347,14 +359,14 @@ export default function App() {
           max={20}
           step={1}
           unit="px"
-          onChange={(v) => setTweak("fontSize", v)}
+          onChange={(v) => setTweak('fontSize', v)}
         />
         <TweakSection label="アクセント" />
         <TweakColor
           label="色"
           value={t.accent}
-          options={["#6b6b6b", "#5b6b86", "#5b7a68", "#86705b"]}
-          onChange={(v) => setTweak("accent", v)}
+          options={['#6b6b6b', '#5b6b86', '#5b7a68', '#86705b']}
+          onChange={(v) => setTweak('accent', v)}
         />
       </TweaksPanel>
     </div>
