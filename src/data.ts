@@ -213,6 +213,17 @@ DBもクラウドも要らない。\`~/notes/\` をただ開くだけ。
   },
 ];
 
+export function ancestorsOf(path: string): string[] {
+  const parts = path.split("/");
+  const out: string[] = [];
+  let acc = "";
+  for (let i = 0; i < parts.length - 1; i++) {
+    acc = acc ? acc + "/" + parts[i] : parts[i];
+    out.push(acc);
+  }
+  return out;
+}
+
 export function noteTitle(note: Note): string {
   const m = note.body.match(/^#\s+(.+)$/m);
   if (m) return m[1].trim();

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import type { CSSProperties } from "react";
-import { NOTES, buildTree } from "./data";
+import JSZip from "jszip";
+import { NOTES, buildTree, ancestorsOf } from "./data";
 import { db } from "./db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { renderMarkdown } from "./markdown";
@@ -26,17 +27,6 @@ const TWEAK_DEFAULTS = {
 
 const VIBE_LABELS: Record<string, string> = { quiet: "静かな紙", editor: "エディタ", editorial: "雑誌" };
 const SIDEBAR_LABELS: Record<string, string> = { minimal: "ミニマル", guides: "ガイド線", markers: "マーカー", compact: "コンパクト" };
-
-function ancestorsOf(path: string): string[] {
-  const parts = path.split("/");
-  const out: string[] = [];
-  let acc = "";
-  for (let i = 0; i < parts.length - 1; i++) {
-    acc = acc ? acc + "/" + parts[i] : parts[i];
-    out.push(acc);
-  }
-  return out;
-}
 
 interface BreadcrumbProps {
   path: string;
@@ -104,7 +94,8 @@ function NewNoteDialog({ onCreate, onCancel }: NewNoteDialogProps) {
 
 export default function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
-  const notes = useLiveQuery(() => db.notes.toArray(), []) ?? [];
+  const rawNotes = useLiveQuery(() => db.notes.toArray(), []);
+  const notes = useMemo(() => rawNotes ?? [], [rawNotes]);
   const [currentPath, setCurrentPath] = useState("");
   const [mode, setMode] = useState<"view" | "edit">("view");
   const [draft, setDraft] = useState("");
@@ -191,6 +182,21 @@ export default function App() {
     [openNote]
   );
 
+  const exportNotes = useCallback(async () => {
+    const zip = new JSZip();
+    const all = await db.notes.toArray();
+    for (const note of all) {
+      zip.file(note.path, note.body);
+    }
+    const blob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "notes.zip";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }, []);
+
   useEffect(() => {
     if (mode === "edit" && taRef.current) {
       const ta = taRef.current;
@@ -247,6 +253,7 @@ export default function App() {
         onToggle={toggleFolder}
         onOpen={openNote}
         onNew={() => setCreating(true)}
+        onExport={exportNotes}
         variant={t.sidebar}
         count={notes.length}
       />
