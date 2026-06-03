@@ -78,6 +78,88 @@ describe('編集モード → ESC → 変更が破棄される', () => {
   });
 });
 
+describe('編集 textarea で Tab インデントを操作できる', () => {
+  async function openEditor(body: string) {
+    await db.notes.put({ ...NOTE_A, body });
+    render(<App />);
+
+    await screen.findByText('note-a');
+    await userEvent.click(screen.getAllByText('note-a')[0]);
+    await userEvent.click(screen.getByTitle('編集 (E)'));
+
+    return screen.getByRole('textbox') as HTMLTextAreaElement;
+  }
+
+  it('Tab キーでフォーカスを維持したままカーソル位置の行にスペース2つを挿入する', async () => {
+    const textarea = await openEditor('first\nsecond');
+    textarea.setSelectionRange(7, 7);
+
+    fireEvent.keyDown(textarea, { key: 'Tab' });
+
+    await waitFor(() => {
+      expect(textarea.value).toBe('first\n  second');
+    });
+    expect(document.activeElement).toBe(textarea);
+    expect(textarea.selectionStart).toBe(9);
+    expect(textarea.selectionEnd).toBe(9);
+  });
+
+  it('Shift+Tab キーでカーソル位置の行頭インデントを削除する', async () => {
+    const textarea = await openEditor('first\n  second');
+    textarea.setSelectionRange(9, 9);
+
+    fireEvent.keyDown(textarea, { key: 'Tab', shiftKey: true });
+
+    await waitFor(() => {
+      expect(textarea.value).toBe('first\nsecond');
+    });
+    expect(textarea.selectionStart).toBe(7);
+    expect(textarea.selectionEnd).toBe(7);
+  });
+
+  it('インデントのない行で Shift+Tab を押しても次の入力でカーソル位置が巻き戻らない', async () => {
+    const textarea = await openEditor('plain');
+    textarea.setSelectionRange(2, 2);
+
+    fireEvent.keyDown(textarea, { key: 'Tab', shiftKey: true });
+
+    expect(textarea.value).toBe('plain');
+    expect(textarea.selectionStart).toBe(2);
+    expect(textarea.selectionEnd).toBe(2);
+
+    textarea.setSelectionRange(5, 5);
+    fireEvent.change(textarea, { target: { value: 'plain!' } });
+
+    await waitFor(() => {
+      expect(textarea.value).toBe('plain!');
+    });
+    expect(textarea.selectionStart).toBe(6);
+    expect(textarea.selectionEnd).toBe(6);
+  });
+
+  it('複数行選択中に Tab/Shift+Tab キーで選択行すべてに適用する', async () => {
+    const textarea = await openEditor('alpha\nbeta\ngamma');
+    textarea.setSelectionRange(1, 10);
+
+    fireEvent.keyDown(textarea, { key: 'Tab' });
+
+    await waitFor(() => {
+      expect(textarea.value).toBe('  alpha\n  beta\ngamma');
+    });
+    expect(textarea.selectionStart).toBe(3);
+    expect(textarea.selectionEnd).toBe(14);
+
+    textarea.setSelectionRange(3, 14);
+    fireEvent.keyDown(textarea, { key: 'Tab', shiftKey: true });
+
+    await waitFor(() => {
+      expect(textarea.value).toBe('alpha\nbeta\ngamma');
+    });
+    expect(textarea.selectionStart).toBe(1);
+    expect(textarea.selectionEnd).toBe(10);
+  });
+});
+
 describe('新規ノートダイアログからノートを作成できる', () => {
   it('+ ボタンでダイアログが開き、パスを入力してノートを作成できる', async () => {
     render(<App />);
