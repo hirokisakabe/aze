@@ -1,0 +1,104 @@
+import { describe, it, expect } from 'vitest';
+import { render } from '@testing-library/react';
+import { MarkdownPreview } from '../../markdown';
+
+describe('MarkdownPreview', () => {
+  it('見出し h1 に md-h md-h1 クラスが付与される', () => {
+    const { container } = render(<MarkdownPreview content="# Hello" />);
+    const h1 = container.querySelector('h1');
+    expect(h1).not.toBeNull();
+    expect(h1!.className).toContain('md-h1');
+  });
+
+  it('見出し h2 に md-h md-h2 クラスが付与される', () => {
+    const { container } = render(<MarkdownPreview content="## Section" />);
+    const h2 = container.querySelector('h2');
+    expect(h2).not.toBeNull();
+    expect(h2!.className).toContain('md-h2');
+  });
+
+  it('見出し h3/h4 に対応クラスが付与される', () => {
+    const { container } = render(<MarkdownPreview content={'### A\n\n#### B'} />);
+    expect(container.querySelector('h3')?.className).toContain('md-h3');
+    expect(container.querySelector('h4')?.className).toContain('md-h4');
+  });
+
+  it('段落を p.md-p に変換する', () => {
+    const { container } = render(<MarkdownPreview content="これはテキストです" />);
+    const p = container.querySelector('p');
+    expect(p).not.toBeNull();
+    expect(p!.className).toContain('md-p');
+  });
+
+  it('--- を hr.md-hr に変換する', () => {
+    const { container } = render(<MarkdownPreview content="---" />);
+    const hr = container.querySelector('hr');
+    expect(hr).not.toBeNull();
+    expect(hr!.className).toContain('md-hr');
+  });
+
+  it('引用を blockquote.md-quote に変換する', () => {
+    const { container } = render(<MarkdownPreview content="> 引用テキスト" />);
+    const bq = container.querySelector('blockquote');
+    expect(bq).not.toBeNull();
+    expect(bq!.className).toContain('md-quote');
+  });
+
+  it('箇条書きを ul.md-list に変換する', () => {
+    const { container } = render(<MarkdownPreview content={'- item1\n- item2'} />);
+    const ul = container.querySelector('ul');
+    expect(ul).not.toBeNull();
+    expect(ul!.className).toContain('md-list');
+  });
+
+  it('番号付きリストを ol.md-list に変換する', () => {
+    const { container } = render(<MarkdownPreview content={'1. first\n2. second'} />);
+    const ol = container.querySelector('ol');
+    expect(ol).not.toBeNull();
+    expect(ol!.className).toContain('md-list');
+  });
+
+  it('コードブロックを pre.md-pre > code に変換する', () => {
+    const { container } = render(<MarkdownPreview content={'```\nconst x = 1;\n```'} />);
+    const pre = container.querySelector('pre');
+    expect(pre).not.toBeNull();
+    expect(pre!.className).toContain('md-pre');
+    expect(pre!.querySelector('code')).not.toBeNull();
+  });
+
+  it('インラインコードに md-code クラスが付与される', () => {
+    const { container } = render(<MarkdownPreview content="Use `npm install`" />);
+    const code = container.querySelector('code');
+    expect(code).not.toBeNull();
+    expect(code!.className).toContain('md-code');
+  });
+
+  it('リンクに md-link クラスが付与される', () => {
+    const { container } = render(<MarkdownPreview content="[example](https://example.com)" />);
+    const a = container.querySelector('a');
+    expect(a).not.toBeNull();
+    expect(a!.className).toContain('md-link');
+  });
+
+  it('タスクリストを ul.md-tasklist に変換する', () => {
+    const { container } = render(<MarkdownPreview content={'- [ ] TODO\n- [x] Done'} />);
+    const ul = container.querySelector('ul');
+    expect(ul).not.toBeNull();
+    expect(ul!.className).toContain('md-tasklist');
+  });
+
+  it('完了タスクに is-done クラスが付与される', () => {
+    const { container } = render(<MarkdownPreview content={'- [ ] TODO\n- [x] Done'} />);
+    const items = container.querySelectorAll('li');
+    const doneItem = Array.from(items).find((li) => li.className.includes('is-done'));
+    expect(doneItem).not.toBeNull();
+  });
+
+  it('テーブル構文を table 要素としてレンダリングする', () => {
+    const md = '| col1 | col2 |\n| --- | --- |\n| a | b |';
+    const { container } = render(<MarkdownPreview content={md} />);
+    expect(container.querySelector('table')).not.toBeNull();
+    expect(container.querySelector('th')).not.toBeNull();
+    expect(container.querySelector('td')).not.toBeNull();
+  });
+});

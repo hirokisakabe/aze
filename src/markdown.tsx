@@ -1,167 +1,76 @@
-import React, { createElement as h } from 'react';
-import type { ReactNode } from 'react';
+import React, { createContext, useContext } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import type { Components } from 'react-markdown';
 
-export function parseInline(text: string, keyPrefix: string): ReactNode[] {
-  const out: ReactNode[] = [];
-  let rest = text;
-  let k = 0;
-  const push = (node: ReactNode) => out.push(node);
-  const re = /(`[^`]+`)|(\*\*[^*]+\*\*)|(\*[^*]+\*)|(~~[^~]+~~)|(\[[^\]]+\]\([^)]+\))/;
-  while (rest.length) {
-    const m = rest.match(re);
-    if (!m) {
-      push(rest);
-      break;
-    }
-    if ((m.index ?? 0) > 0) push(rest.slice(0, m.index));
-    const tok = m[0];
-    const key = `${keyPrefix}-${k++}`;
-    if (tok.startsWith('`')) {
-      push(h('code', { key, className: 'md-code' }, tok.slice(1, -1)));
-    } else if (tok.startsWith('**')) {
-      push(h('strong', { key }, parseInline(tok.slice(2, -2), key)));
-    } else if (tok.startsWith('~~')) {
-      push(h('del', { key }, parseInline(tok.slice(2, -2), key)));
-    } else if (tok.startsWith('*')) {
-      push(h('em', { key }, parseInline(tok.slice(1, -1), key)));
-    } else if (tok.startsWith('[')) {
-      const lm = tok.match(/\[([^\]]+)\]\(([^)]+)\)/);
-      if (lm) {
-        push(
-          h(
-            'a',
-            {
-              key,
-              href: lm[2],
-              className: 'md-link',
-              onClick: (e: React.MouseEvent) => e.preventDefault(),
-            },
-            lm[1]
-          )
-        );
-      }
-    }
-    rest = rest.slice((m.index ?? 0) + tok.length);
-  }
-  return out;
+const InsidePreContext = createContext(false);
+
+function Pre({ children }: { children?: React.ReactNode }) {
+  return (
+    <InsidePreContext.Provider value={true}>
+      <pre className="md-pre">{children}</pre>
+    </InsidePreContext.Provider>
+  );
 }
 
-export function renderMarkdown(src: string): ReactNode[] {
-  const lines = src.replace(/\r\n/g, '\n').split('\n');
-  const blocks: ReactNode[] = [];
-  let i = 0;
-  let key = 0;
-  const nextKey = () => `b${key++}`;
+function Code({ children, className }: { children?: React.ReactNode; className?: string }) {
+  const insidePre = useContext(InsidePreContext);
+  if (insidePre) {
+    return <code className={className}>{children}</code>;
+  }
+  return <code className="md-code">{children}</code>;
+}
 
-  while (i < lines.length) {
-    const line = lines[i];
-
-    if (/^\s*$/.test(line)) {
-      i++;
-      continue;
-    }
-
-    if (/^```/.test(line)) {
-      const buf: string[] = [];
-      i++;
-      while (i < lines.length && !/^```/.test(lines[i])) {
-        buf.push(lines[i]);
-        i++;
-      }
-      i++;
-      blocks.push(
-        h('pre', { key: nextKey(), className: 'md-pre' }, h('code', null, buf.join('\n')))
-      );
-      continue;
-    }
-
-    const hm = line.match(/^(#{1,4})\s+(.+)$/);
-    if (hm) {
-      const lvl = hm[1].length;
-      const tag = `h${lvl}` as 'h1' | 'h2' | 'h3' | 'h4';
-      blocks.push(
-        h(tag, { key: nextKey(), className: `md-h md-h${lvl}` }, parseInline(hm[2], nextKey()))
-      );
-      i++;
-      continue;
-    }
-
-    if (/^\s*---+\s*$/.test(line)) {
-      blocks.push(h('hr', { key: nextKey(), className: 'md-hr' }));
-      i++;
-      continue;
-    }
-
-    if (/^\s*>\s?/.test(line)) {
-      const buf: string[] = [];
-      while (i < lines.length && /^\s*>\s?/.test(lines[i])) {
-        buf.push(lines[i].replace(/^\s*>\s?/, ''));
-        i++;
-      }
-      blocks.push(
-        h(
-          'blockquote',
-          { key: nextKey(), className: 'md-quote' },
-          buf.map((b, idx) => h('div', { key: idx }, parseInline(b, nextKey())))
-        )
-      );
-      continue;
-    }
-
-    if (/^\s*([-*]|\d+\.)\s+/.test(line)) {
-      const ordered = /^\s*\d+\.\s+/.test(line);
-      const items: ReactNode[] = [];
-      let hasTask = false;
-      while (i < lines.length && /^\s*([-*]|\d+\.)\s+/.test(lines[i])) {
-        const raw = lines[i].replace(/^\s*([-*]|\d+\.)\s+/, '');
-        const task = raw.match(/^\[([ xX])\]\s+(.*)$/);
-        if (task) {
-          hasTask = true;
-          const done = task[1].toLowerCase() === 'x';
-          items.push(
-            h(
-              'li',
-              { key: items.length, className: `md-li md-task${done ? ' is-done' : ''}` },
-              h('span', { className: 'md-check', 'aria-hidden': 'true' }, done ? '✓' : ''),
-              h('span', { className: 'md-task-text' }, parseInline(task[2], nextKey()))
-            )
-          );
-        } else {
-          items.push(
-            h('li', { key: items.length, className: 'md-li' }, parseInline(raw, nextKey()))
-          );
-        }
-        i++;
-      }
-      const tag = ordered ? 'ol' : 'ul';
-      blocks.push(
-        h(tag, { key: nextKey(), className: `md-list${hasTask ? ' md-tasklist' : ''}` }, items)
-      );
-      continue;
-    }
-
-    const buf = [line];
-    i++;
-    while (
-      i < lines.length &&
-      !/^\s*$/.test(lines[i]) &&
-      !/^(#{1,4}\s|>|\s*---+\s*$|```|\s*([-*]|\d+\.)\s+)/.test(lines[i])
-    ) {
-      buf.push(lines[i]);
-      i++;
-    }
-    blocks.push(
-      h(
-        'p',
-        { key: nextKey(), className: 'md-p' },
-        buf.flatMap((b, idx) =>
-          idx === 0
-            ? parseInline(b, nextKey())
-            : [h('br', { key: `br${idx}` }), ...parseInline(b, nextKey())]
-        )
-      )
+function Li({ children, className }: { children?: React.ReactNode; className?: string }) {
+  if (className?.includes('task-list-item')) {
+    const childArray = React.Children.toArray(children);
+    const checkbox = childArray.find(
+      (child) => React.isValidElement(child) && child.type === 'input'
+    ) as React.ReactElement<{ checked?: boolean }> | undefined;
+    const done = checkbox?.props?.checked ?? false;
+    const textChildren = childArray.filter(
+      (child) => !(React.isValidElement(child) && child.type === 'input')
+    );
+    return (
+      <li className={`md-li md-task${done ? ' is-done' : ''}`}>
+        <span className="md-check" aria-hidden="true">
+          {done ? '✓' : ''}
+        </span>
+        <span className="md-task-text">{textChildren}</span>
+      </li>
     );
   }
+  return <li className="md-li">{children}</li>;
+}
 
-  return blocks;
+const components: Components = {
+  h1: ({ children }) => <h1 className="md-h md-h1">{children}</h1>,
+  h2: ({ children }) => <h2 className="md-h md-h2">{children}</h2>,
+  h3: ({ children }) => <h3 className="md-h md-h3">{children}</h3>,
+  h4: ({ children }) => <h4 className="md-h md-h4">{children}</h4>,
+  p: ({ children }) => <p className="md-p">{children}</p>,
+  ul: ({ children, className }) => (
+    <ul className={`md-list${className?.includes('contains-task-list') ? ' md-tasklist' : ''}`}>
+      {children}
+    </ul>
+  ),
+  ol: ({ children }) => <ol className="md-list">{children}</ol>,
+  li: Li,
+  blockquote: ({ children }) => <blockquote className="md-quote">{children}</blockquote>,
+  pre: Pre,
+  code: Code,
+  hr: () => <hr className="md-hr" />,
+  a: ({ children, href }) => (
+    <a className="md-link" href={href} onClick={(e: React.MouseEvent) => e.preventDefault()}>
+      {children}
+    </a>
+  ),
+};
+
+export function MarkdownPreview({ content }: { content: string }) {
+  return (
+    <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+      {content}
+    </ReactMarkdown>
+  );
 }
