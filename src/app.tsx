@@ -13,6 +13,7 @@ import {
   TweakRadio,
   TweakSlider,
   TweakColor,
+  TweakToggle,
 } from './tweaks-panel';
 
 const TODAY = new Intl.DateTimeFormat('sv-SE').format(new Date());
@@ -23,6 +24,7 @@ const TWEAK_DEFAULTS = {
   measure: 1200,
   fontSize: 17,
   accent: '#5b6b86',
+  showWhitespace: false,
 };
 
 const VIBE_LABELS: Record<string, string> = {
@@ -36,6 +38,42 @@ const SIDEBAR_LABELS: Record<string, string> = {
   markers: 'マーカー',
   compact: 'コンパクト',
 };
+
+function renderWsOverlay(text: string): React.ReactNode[] {
+  const out: React.ReactNode[] = [];
+  let buf = '';
+  let k = 0;
+  const flush = () => {
+    if (!buf) return;
+    out.push(
+      <span key={k++} style={{ color: 'transparent' }}>
+        {buf}
+      </span>
+    );
+    buf = '';
+  };
+  for (const ch of text) {
+    if (ch === ' ') {
+      flush();
+      out.push(
+        <span key={k++} className="ws-dot">
+          ·
+        </span>
+      );
+    } else if (ch === '\t') {
+      flush();
+      out.push(
+        <span key={k++} className="ws-tab">
+          {'\t'}
+        </span>
+      );
+    } else {
+      buf += ch;
+    }
+  }
+  flush();
+  return out;
+}
 
 interface BreadcrumbProps {
   path: string;
@@ -111,6 +149,7 @@ export default function App() {
   const [creating, setCreating] = useState(false);
   const [expanded, setExpanded] = useState(() => new Set<string>());
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const pathInitializedRef = useRef(false);
 
   const tree = useMemo(() => buildTree(notes), [notes]);
@@ -225,6 +264,17 @@ export default function App() {
   }, [mode]);
 
   useEffect(() => {
+    const ta = taRef.current;
+    if (!ta || !t.showWhitespace) return;
+    const sync = () => {
+      const overlay = overlayRef.current;
+      if (overlay) overlay.scrollTop = ta.scrollTop;
+    };
+    ta.addEventListener('scroll', sync);
+    return () => ta.removeEventListener('scroll', sync);
+  }, [t.showWhitespace]);
+
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       const typing = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
@@ -301,13 +351,20 @@ export default function App() {
             <div className="editor">
               <div className="editor-inner">
                 <Breadcrumb path={current.path} />
-                <textarea
-                  ref={taRef}
-                  className="editor-area"
-                  value={draft}
-                  spellCheck={false}
-                  onChange={(e) => setDraft(e.target.value)}
-                />
+                <div className="editor-area-wrap">
+                  {t.showWhitespace && (
+                    <div ref={overlayRef} className="editor-ws-overlay" aria-hidden="true">
+                      {renderWsOverlay(draft)}
+                    </div>
+                  )}
+                  <textarea
+                    ref={taRef}
+                    className="editor-area"
+                    value={draft}
+                    spellCheck={false}
+                    onChange={(e) => setDraft(e.target.value)}
+                  />
+                </div>
               </div>
               <div className="editor-bar">
                 <span className="bar-mode">編集中</span>
@@ -367,6 +424,12 @@ export default function App() {
           value={t.accent}
           options={['#6b6b6b', '#5b6b86', '#5b7a68', '#86705b']}
           onChange={(v) => setTweak('accent', v)}
+        />
+        <TweakSection label="エディタ" />
+        <TweakToggle
+          label="ホワイトスペース表示"
+          value={t.showWhitespace}
+          onChange={(v) => setTweak('showWhitespace', v)}
         />
       </TweaksPanel>
     </div>
