@@ -21,6 +21,7 @@ const NOTE_B: Note = {
 
 beforeEach(async () => {
   await db.notes.clear();
+  await db.settings.clear();
 });
 
 describe("ノートを選択すると本文が表示される", () => {
@@ -41,7 +42,7 @@ describe("編集モード → 保存 → 閲覧モードに戻る", () => {
     render(<App />);
 
     await screen.findByText("note-a");
-    await userEvent.click(screen.getByText("note-a"));
+    await userEvent.click(screen.getAllByText("note-a")[0]);
     await screen.findByText("Content of note A.");
 
     await userEvent.click(screen.getByTitle("編集 (E)"));
@@ -62,7 +63,7 @@ describe("編集モード → ESC → 変更が破棄される", () => {
     render(<App />);
 
     await screen.findByText("note-a");
-    await userEvent.click(screen.getByText("note-a"));
+    await userEvent.click(screen.getAllByText("note-a")[0]);
     await screen.findByText("Content of note A.");
 
     await userEvent.click(screen.getByTitle("編集 (E)"));
@@ -105,7 +106,7 @@ describe("編集中に別ノートへ移動したとき変更が破棄される"
     render(<App />);
 
     await screen.findByText("note-a");
-    await userEvent.click(screen.getByText("note-a"));
+    await userEvent.click(screen.getAllByText("note-a")[0]);
     await screen.findByText("Content of note A.");
 
     await userEvent.click(screen.getByTitle("編集 (E)"));
