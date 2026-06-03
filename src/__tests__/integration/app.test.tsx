@@ -90,6 +90,11 @@ describe("新規ノートダイアログからノートを作成できる", () =
     await waitFor(() => {
       expect(screen.queryByPlaceholderText("ideas/new-idea.md")).toBeNull();
     });
+
+    const saved = await db.notes.get("test-note.md");
+    expect(saved).toBeDefined();
+    expect(saved?.path).toBe("test-note.md");
+
     await screen.findByRole("textbox");
   });
 });

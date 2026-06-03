@@ -1,4 +1,6 @@
 import { test, expect } from "@playwright/test";
+import JSZip from "jszip";
+import fs from "fs";
 
 test("アプリを開いてノートが表示される", async ({ page }) => {
   await page.goto("/");
@@ -47,4 +49,13 @@ test("エクスポートボタンで zip がダウンロードされる", async 
   const download = await downloadPromise;
 
   expect(download.suggestedFilename()).toBe("notes.zip");
+
+  const path = await download.path();
+  expect(path).not.toBeNull();
+
+  const data = fs.readFileSync(path!);
+  const zip = await JSZip.loadAsync(data);
+  const entries = Object.keys(zip.files);
+  expect(entries.length).toBeGreaterThan(0);
+  expect(entries.some((e) => e.endsWith(".md"))).toBe(true);
 });

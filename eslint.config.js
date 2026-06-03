@@ -21,5 +21,12 @@ export default tseslint.config(
         version: "detect",
       },
     },
+  },
+  {
+    files: ["e2e/**/*.ts"],
+    extends: [tseslint.configs.recommended],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "error",
+    },
   }
 );

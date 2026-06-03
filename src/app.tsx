@@ -172,11 +172,12 @@ export default function App() {
       zip.file(note.path, note.body);
     }
     const blob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
+    a.href = url;
     a.download = "notes.zip";
     a.click();
-    URL.revokeObjectURL(a.href);
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   }, []);
 
   useEffect(() => {
