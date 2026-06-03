@@ -105,12 +105,13 @@ function NewNoteDialog({ onCreate, onCancel }: NewNoteDialogProps) {
 export default function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const notes = useLiveQuery(() => db.notes.toArray(), []) ?? [];
-  const [currentPath, setCurrentPath] = useState("daily/2024-06-02.md");
+  const [currentPath, setCurrentPath] = useState("");
   const [mode, setMode] = useState<"view" | "edit">("view");
   const [draft, setDraft] = useState("");
   const [creating, setCreating] = useState(false);
-  const [expanded, setExpanded] = useState(() => new Set(ancestorsOf("daily/2024-06-02.md")));
+  const [expanded, setExpanded] = useState(() => new Set<string>());
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const pathInitializedRef = useRef(false);
 
   const tree = useMemo(() => buildTree(notes), [notes]);
   const current = useMemo(() => notes.find((n) => n.path === currentPath), [notes, currentPath]);
@@ -140,6 +141,22 @@ export default function App() {
       }
     });
   }, []);
+
+  useEffect(() => {
+    if (pathInitializedRef.current || notes.length === 0) return;
+    pathInitializedRef.current = true;
+    db.settings.get("lastOpenedPath").then((setting) => {
+      const saved = setting?.value;
+      const path = saved && notes.some((n) => n.path === saved) ? saved : notes[0].path;
+      setCurrentPath(path);
+      setExpanded(new Set(ancestorsOf(path)));
+    });
+  }, [notes]);
+
+  useEffect(() => {
+    if (!currentPath) return;
+    db.settings.put({ key: "lastOpenedPath", value: currentPath });
+  }, [currentPath]);
 
   const enterEdit = useCallback(() => {
     if (!current) return;
