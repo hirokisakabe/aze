@@ -8,7 +8,7 @@ export interface Note {
 export interface TreeNode {
   name: string;
   path: string;
-  type: "file" | "folder";
+  type: 'file' | 'folder';
   children?: TreeNode[];
 }
 
@@ -16,9 +16,9 @@ type FolderNode = TreeNode & { children: TreeNode[] };
 
 export const NOTES: Note[] = [
   {
-    path: "inbox.md",
-    created: "2024-05-28",
-    updated: "2024-06-02",
+    path: 'inbox.md',
+    created: '2024-05-28',
+    updated: '2024-06-02',
     body: `# inbox
 
 雑多に放り込む場所。整理は後で。
@@ -38,9 +38,9 @@ export const NOTES: Note[] = [
 でも検索はこのアプリには入れない。エディタの仕事。`,
   },
   {
-    path: "todo.md",
-    created: "2024-04-10",
-    updated: "2024-06-01",
+    path: 'todo.md',
+    created: '2024-04-10',
+    updated: '2024-06-01',
     body: `# todo
 
 ## 今週
@@ -62,9 +62,9 @@ export const NOTES: Note[] = [
 - [ ] 友人の引っ越し手伝いの日程`,
   },
   {
-    path: "reading/サピエンス全史.md",
-    created: "2024-03-02",
-    updated: "2024-05-20",
+    path: 'reading/サピエンス全史.md',
+    created: '2024-03-02',
+    updated: '2024-05-20',
     body: `# サピエンス全史
 
 ユヴァル・ノア・ハラリ
@@ -96,9 +96,9 @@ export const NOTES: Note[] = [
 次は『ホモ・デウス』へ。`,
   },
   {
-    path: "reading/Deep Work.md",
-    created: "2024-02-14",
-    updated: "2024-04-30",
+    path: 'reading/Deep Work.md',
+    created: '2024-02-14',
+    updated: '2024-04-30',
     body: `# Deep Work
 
 カル・ニューポート
@@ -122,9 +122,9 @@ export const NOTES: Note[] = [
 > 何に注意を向けるかが、人生の質を決める。`,
   },
   {
-    path: "ideas/ノートアプリの構想.md",
-    created: "2024-05-15",
-    updated: "2024-06-02",
+    path: 'ideas/ノートアプリの構想.md',
+    created: '2024-05-15',
+    updated: '2024-06-02',
     body: `# ノートアプリの構想
 
 DBもクラウドも要らない。\`~/notes/\` をただ開くだけ。
@@ -151,9 +151,9 @@ DBもクラウドも要らない。\`~/notes/\` をただ開くだけ。
 - メタ情報は下にそっと。`,
   },
   {
-    path: "ideas/週末のアイデア.md",
-    created: "2024-05-31",
-    updated: "2024-05-31",
+    path: 'ideas/週末のアイデア.md',
+    created: '2024-05-31',
+    updated: '2024-05-31',
     body: `# 週末のアイデア
 
 - ベランダのハーブを植え替える
@@ -170,9 +170,9 @@ DBもクラウドも要らない。\`~/notes/\` をただ開くだけ。
 - *Paterson*`,
   },
   {
-    path: "daily/2024-06-01.md",
-    created: "2024-06-01",
-    updated: "2024-06-01",
+    path: 'daily/2024-06-01.md',
+    created: '2024-06-01',
+    updated: '2024-06-01',
     body: `# 2024-06-01
 
 曇り。少し肌寒い。
@@ -188,9 +188,9 @@ DBもクラウドも要らない。\`~/notes/\` をただ開くだけ。
 夜、『サピエンス』の続き。農業革命の章。`,
   },
   {
-    path: "daily/2024-06-02.md",
-    created: "2024-06-02",
-    updated: "2024-06-02",
+    path: 'daily/2024-06-02.md',
+    created: '2024-06-02',
+    updated: '2024-06-02',
     body: `# 2024-06-02
 
 晴れ。良い風。
@@ -214,11 +214,11 @@ DBもクラウドも要らない。\`~/notes/\` をただ開くだけ。
 ];
 
 export function ancestorsOf(path: string): string[] {
-  const parts = path.split("/");
+  const parts = path.split('/');
   const out: string[] = [];
-  let acc = "";
+  let acc = '';
   for (let i = 0; i < parts.length - 1; i++) {
-    acc = acc ? acc + "/" + parts[i] : parts[i];
+    acc = acc ? acc + '/' + parts[i] : parts[i];
     out.push(acc);
   }
   return out;
@@ -227,24 +227,24 @@ export function ancestorsOf(path: string): string[] {
 export function noteTitle(note: Note): string {
   const m = note.body.match(/^#\s+(.+)$/m);
   if (m) return m[1].trim();
-  const base = note.path.split("/").pop()!.replace(/\.md$/, "");
+  const base = note.path.split('/').pop()!.replace(/\.md$/, '');
   return base;
 }
 
 export function buildTree(notes: Note[]): TreeNode {
-  const root: FolderNode = { name: "~/notes", path: "", type: "folder", children: [] };
+  const root: FolderNode = { name: '~/notes', path: '', type: 'folder', children: [] };
   for (const note of notes) {
-    const parts = note.path.split("/");
+    const parts = note.path.split('/');
     let cur: FolderNode = root;
-    let acc = "";
+    let acc = '';
     parts.forEach((part, i) => {
-      acc = acc ? acc + "/" + part : part;
+      acc = acc ? acc + '/' + part : part;
       const isFile = i === parts.length - 1;
       let child = cur.children.find((c) => c.name === part);
       if (!child) {
         child = isFile
-          ? { name: part, path: acc, type: "file" }
-          : { name: part, path: acc, type: "folder", children: [] };
+          ? { name: part, path: acc, type: 'file' }
+          : { name: part, path: acc, type: 'folder', children: [] };
         cur.children.push(child);
       }
       if (!isFile) cur = child as FolderNode;
@@ -253,7 +253,7 @@ export function buildTree(notes: Note[]): TreeNode {
   const sortRec = (node: TreeNode) => {
     if (!node.children) return;
     node.children.sort((a, b) => {
-      if (a.type !== b.type) return a.type === "folder" ? -1 : 1;
+      if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
       return a.name.localeCompare(b.name);
     });
     node.children.forEach(sortRec);

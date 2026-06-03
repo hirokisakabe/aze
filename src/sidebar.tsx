@@ -1,4 +1,4 @@
-import type { TreeNode as TreeNodeData } from "./data";
+import type { TreeNode as TreeNodeData } from './data';
 
 interface ChevronProps {
   open: boolean;
@@ -7,7 +7,7 @@ interface ChevronProps {
 function Chevron({ open }: ChevronProps) {
   return (
     <svg
-      className={"sb-chevron" + (open ? " is-open" : "")}
+      className={'sb-chevron' + (open ? ' is-open' : '')}
       width="9"
       height="9"
       viewBox="0 0 10 10"
@@ -35,16 +35,16 @@ interface TreeNodeProps {
 }
 
 function TreeNode({ node, expanded, currentPath, onToggle, onOpen, variant }: TreeNodeProps) {
-  const isFolder = node.type === "folder";
+  const isFolder = node.type === 'folder';
   const open = expanded.has(node.path);
   const active = node.path === currentPath;
-  const showChevron = variant !== "minimal";
+  const showChevron = variant !== 'minimal';
 
   if (isFolder) {
     return (
       <div className="sb-group">
         <div
-          className={"sb-row sb-folder" + (open ? " is-open" : "")}
+          className={'sb-row sb-folder' + (open ? ' is-open' : '')}
           onClick={() => onToggle(node.path)}
         >
           {showChevron ? (
@@ -77,17 +77,17 @@ function TreeNode({ node, expanded, currentPath, onToggle, onOpen, variant }: Tr
 
   return (
     <div
-      className={"sb-row sb-file" + (active ? " is-active" : "")}
+      className={'sb-row sb-file' + (active ? ' is-active' : '')}
       onClick={() => onOpen(node.path)}
     >
-      {variant === "markers" ? (
+      {variant === 'markers' ? (
         <span className="sb-twirl sb-filemark" aria-hidden="true">
           ›
         </span>
       ) : (
         <span className="sb-twirl sb-twirl-empty" aria-hidden="true" />
       )}
-      <span className="sb-name">{node.name.replace(/\.md$/, "")}</span>
+      <span className="sb-name">{node.name.replace(/\.md$/, '')}</span>
     </div>
   );
 }
@@ -104,18 +104,23 @@ interface SidebarProps {
   count: number;
 }
 
-export function Sidebar({ tree, expanded, currentPath, onToggle, onOpen, onNew, onExport, variant, count }: SidebarProps) {
+export function Sidebar({
+  tree,
+  expanded,
+  currentPath,
+  onToggle,
+  onOpen,
+  onNew,
+  onExport,
+  variant,
+  count,
+}: SidebarProps) {
   return (
-    <aside className={"sidebar sb-variant-" + variant}>
+    <aside className={'sidebar sb-variant-' + variant}>
       <div className="sb-brand">
         <span className="brand-mark" aria-hidden="true"></span>
         <span className="brand-name">aze</span>
-        <button
-          className="sb-new"
-          title="新規ノート（N）"
-          onClick={onNew}
-          aria-label="新規ノート"
-        >
+        <button className="sb-new" title="新規ノート（N）" onClick={onNew} aria-label="新規ノート">
           +
         </button>
       </div>
