@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from '../../app';
 import { db } from '../../db';
@@ -97,6 +97,24 @@ describe('新規ノートダイアログからノートを作成できる', () =
     expect(saved?.path).toBe('test-note.md');
 
     await screen.findByRole('textbox');
+  });
+
+  it('IME変換中のEnterキーではノートが作成されない', async () => {
+    render(<App />);
+
+    await userEvent.click(screen.getByLabelText('新規ノート'));
+
+    const input = screen.getByPlaceholderText('ideas/new-idea.md');
+    await userEvent.type(input, 'ime-note.md');
+
+    fireEvent.keyDown(input, { key: 'Enter', isComposing: true });
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(screen.getByPlaceholderText('ideas/new-idea.md')).toBeInTheDocument();
+
+    const saved = await db.notes.get('ime-note.md');
+    expect(saved).toBeUndefined();
   });
 });
 
