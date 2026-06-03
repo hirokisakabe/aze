@@ -99,11 +99,12 @@ interface SidebarProps {
   onToggle: (path: string) => void;
   onOpen: (path: string) => void;
   onNew: () => void;
+  onExport: () => void;
   variant: string;
   count: number;
 }
 
-export function Sidebar({ tree, expanded, currentPath, onToggle, onOpen, onNew, variant, count }: SidebarProps) {
+export function Sidebar({ tree, expanded, currentPath, onToggle, onOpen, onNew, onExport, variant, count }: SidebarProps) {
   return (
     <aside className={"sidebar sb-variant-" + variant}>
       <div className="sb-brand">
@@ -132,7 +133,17 @@ export function Sidebar({ tree, expanded, currentPath, onToggle, onOpen, onNew, 
           />
         ))}
       </div>
-      <div className="sb-foot">{count} notes</div>
+      <div className="sb-foot">
+        <span>{count} notes</span>
+        <button
+          className="sb-export"
+          title="エクスポート"
+          onClick={onExport}
+          aria-label="エクスポート"
+        >
+          ↓
+        </button>
+      </div>
     </aside>
   );
 }
