@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import type { CSSProperties } from "react";
-import type { Note } from "./data";
 import { NOTES, buildTree } from "./data";
+import { db } from "./db";
+import { useLiveQuery } from "dexie-react-hooks";
 import { renderMarkdown } from "./markdown";
 import { Sidebar } from "./sidebar";
 import {
@@ -103,7 +104,7 @@ function NewNoteDialog({ onCreate, onCancel }: NewNoteDialogProps) {
 
 export default function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
-  const [notes, setNotes] = useState<Note[]>(() => NOTES.map((n) => ({ ...n })));
+  const notes = useLiveQuery(() => db.notes.toArray(), []) ?? [];
   const [currentPath, setCurrentPath] = useState("daily/2024-06-02.md");
   const [mode, setMode] = useState<"view" | "edit">("view");
   const [draft, setDraft] = useState("");
@@ -132,38 +133,45 @@ export default function App() {
     });
   }, []);
 
+  useEffect(() => {
+    db.notes.count().then((count) => {
+      if (count === 0) {
+        db.notes.bulkPut(NOTES.map((n) => ({ ...n })));
+      }
+    });
+  }, []);
+
   const enterEdit = useCallback(() => {
     if (!current) return;
     setDraft(current.body);
     setMode("edit");
   }, [current]);
 
-  const saveEdit = useCallback(() => {
-    setNotes((prev) =>
-      prev.map((n) => (n.path === currentPath ? { ...n, body: draft, updated: TODAY } : n))
-    );
+  const saveEdit = useCallback(async () => {
+    if (!current) return;
+    await db.notes.put({ ...current, body: draft, updated: TODAY });
     setMode("view");
-  }, [draft, currentPath]);
+  }, [draft, current]);
 
   const cancelEdit = useCallback(() => setMode("view"), []);
 
   const createNote = useCallback(
-    (path: string) => {
+    async (path: string) => {
       setCreating(false);
-      const exists = notes.find((n) => n.path === path);
+      const exists = await db.notes.get(path);
       if (exists) {
         openNote(path);
         return;
       }
       const base = path.split("/").pop()!.replace(/\.md$/, "");
       const body = `# ${base}\n\n`;
-      setNotes((prev) => [...prev, { path, created: TODAY, updated: TODAY, body }]);
+      await db.notes.put({ path, created: TODAY, updated: TODAY, body });
       setCurrentPath(path);
       setExpanded(new Set(ancestorsOf(path)));
       setDraft(body);
       setMode("edit");
     },
-    [notes, openNote]
+    [openNote]
   );
 
   useEffect(() => {
