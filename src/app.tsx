@@ -201,6 +201,23 @@ export default function App() {
     [openNote]
   );
 
+  const deleteNote = useCallback(
+    async (path: string) => {
+      await db.notes.delete(path);
+      if (currentPath === path) {
+        const remaining = notes.filter((n) => n.path !== path);
+        if (remaining.length > 0) {
+          setCurrentPath(remaining[0].path);
+          setExpanded(new Set(ancestorsOf(remaining[0].path)));
+        } else {
+          setCurrentPath('');
+        }
+        setMode('view');
+      }
+    },
+    [currentPath, notes]
+  );
+
   const exportNotes = useCallback(async () => {
     const zip = new JSZip();
     const all = await db.notes.toArray();
@@ -273,6 +290,7 @@ export default function App() {
         onOpen={openNote}
         onNew={() => setCreating(true)}
         onExport={exportNotes}
+        onDelete={deleteNote}
         variant={t.sidebar}
         count={notes.length}
       />
