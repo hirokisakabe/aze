@@ -300,6 +300,11 @@ export default function App() {
     const next = shiftKey
       ? unindentText(textarea.value, textarea.selectionStart, textarea.selectionEnd)
       : indentText(textarea.value, textarea.selectionStart, textarea.selectionEnd);
+    if (next.value === textarea.value) {
+      pendingSelectionRef.current = null;
+      textarea.setSelectionRange(next.selectionStart, next.selectionEnd);
+      return;
+    }
     pendingSelectionRef.current = {
       selectionStart: next.selectionStart,
       selectionEnd: next.selectionEnd,

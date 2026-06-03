@@ -117,6 +117,26 @@ describe('編集 textarea で Tab インデントを操作できる', () => {
     expect(textarea.selectionEnd).toBe(7);
   });
 
+  it('インデントのない行で Shift+Tab を押しても次の入力でカーソル位置が巻き戻らない', async () => {
+    const textarea = await openEditor('plain');
+    textarea.setSelectionRange(2, 2);
+
+    fireEvent.keyDown(textarea, { key: 'Tab', shiftKey: true });
+
+    expect(textarea.value).toBe('plain');
+    expect(textarea.selectionStart).toBe(2);
+    expect(textarea.selectionEnd).toBe(2);
+
+    textarea.setSelectionRange(5, 5);
+    fireEvent.change(textarea, { target: { value: 'plain!' } });
+
+    await waitFor(() => {
+      expect(textarea.value).toBe('plain!');
+    });
+    expect(textarea.selectionStart).toBe(6);
+    expect(textarea.selectionEnd).toBe(6);
+  });
+
   it('複数行選択中に Tab/Shift+Tab キーで選択行すべてに適用する', async () => {
     const textarea = await openEditor('alpha\nbeta\ngamma');
     textarea.setSelectionRange(1, 10);
