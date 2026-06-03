@@ -113,10 +113,36 @@ const __TWEAKS_STYLE = `
     filter:drop-shadow(0 1px 1px rgba(0,0,0,.3))}
 `;
 
+const TWEAKS_STORAGE_KEY = "aze:tweaks";
+
 export function useTweaks<T extends Record<string, unknown>>(
   defaults: T
 ): [T, (key: keyof T, val: T[keyof T]) => void] {
-  const [values, setValues] = React.useState<T>(defaults);
+  const [values, setValues] = React.useState<T>(() => {
+    try {
+      const stored = localStorage.getItem(TWEAKS_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as Record<string, unknown>;
+        const merged = { ...defaults };
+        for (const key of Object.keys(defaults)) {
+          if (key in parsed) (merged as Record<string, unknown>)[key] = parsed[key];
+        }
+        return merged;
+      }
+    } catch {
+      // fall through to defaults
+    }
+    return defaults;
+  });
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem(TWEAKS_STORAGE_KEY, JSON.stringify(values));
+    } catch {
+      // ignore write failures
+    }
+  }, [values]);
+
   const setTweak = React.useCallback(
     (key: keyof T, val: T[keyof T]) => {
       setValues((prev) => ({ ...prev, [key]: val }));
