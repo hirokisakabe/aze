@@ -100,8 +100,54 @@ describe("新規ノートダイアログからノートを作成できる", () =
   });
 });
 
-describe("編集中に別ノートへ移動したとき変更が破棄される", () => {
-  it("編集中に別ノートをクリックすると編集モードが終了する", async () => {
+describe("編集中に別ノートへ移動したとき変更が自動保存される", () => {
+  it("編集中に別ノートをクリックすると draft が自動保存されて移動する", async () => {
+    await db.notes.bulkPut([NOTE_A, NOTE_B]);
+    render(<App />);
+
+    await screen.findByText("note-a");
+    await userEvent.click(screen.getAllByText("note-a")[0]);
+    await screen.findByText("Content of note A.");
+
+    await userEvent.click(screen.getByTitle("編集 (E)"));
+    const textarea = screen.getByRole("textbox");
+    await userEvent.clear(textarea);
+    await userEvent.type(textarea, "# Note A\n\nAutosaved content.");
+
+    await userEvent.click(screen.getByText("note-b"));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("textbox")).toBeNull();
+    });
+    await screen.findByText("Content of note B.");
+
+    const saved = await db.notes.get("note-a.md");
+    expect(saved?.body).toBe("# Note A\n\nAutosaved content.");
+  });
+
+  it("同じノートを再クリックしても自動保存されない", async () => {
+    await db.notes.bulkPut([NOTE_A, NOTE_B]);
+    render(<App />);
+
+    await screen.findByText("note-a");
+    await userEvent.click(screen.getAllByText("note-a")[0]);
+    await screen.findByText("Content of note A.");
+
+    await userEvent.click(screen.getByTitle("編集 (E)"));
+    const textarea = screen.getByRole("textbox");
+    await userEvent.clear(textarea);
+    await userEvent.type(textarea, "# Note A\n\nEditing but not saved.");
+
+    const noteAItems = screen.getAllByText("note-a");
+    await userEvent.click(noteAItems[0]);
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    const saved = await db.notes.get("note-a.md");
+    expect(saved?.body).toBe(NOTE_A.body);
+  });
+
+  it("変更がない場合はそのまま移動する（自動保存なし）", async () => {
     await db.notes.bulkPut([NOTE_A, NOTE_B]);
     render(<App />);
 
@@ -118,5 +164,8 @@ describe("編集中に別ノートへ移動したとき変更が破棄される"
       expect(screen.queryByRole("textbox")).toBeNull();
     });
     await screen.findByText("Content of note B.");
+
+    const saved = await db.notes.get("note-a.md");
+    expect(saved?.body).toBe(NOTE_A.body);
   });
 });
