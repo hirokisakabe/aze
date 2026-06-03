@@ -277,7 +277,7 @@ interface TweakRowProps {
   inline?: boolean;
 }
 
-export function TweakRow({ label, value, children, inline = false }: TweakRowProps) {
+function TweakRow({ label, value, children, inline = false }: TweakRowProps) {
   return (
     <div className={inline ? 'twk-row twk-row-h' : 'twk-row'}>
       <div className="twk-lbl">
@@ -320,32 +320,6 @@ export function TweakSlider({
         onChange={(e) => onChange(Number(e.target.value))}
       />
     </TweakRow>
-  );
-}
-
-interface TweakToggleProps {
-  label: string;
-  value: boolean;
-  onChange: (value: boolean) => void;
-}
-
-export function TweakToggle({ label, value, onChange }: TweakToggleProps) {
-  return (
-    <div className="twk-row twk-row-h">
-      <div className="twk-lbl">
-        <span>{label}</span>
-      </div>
-      <button
-        type="button"
-        className="twk-toggle"
-        data-on={value ? '1' : '0'}
-        role="switch"
-        aria-checked={!!value}
-        onClick={() => onChange(!value)}
-      >
-        <i />
-      </button>
-    </div>
   );
 }
 
@@ -448,7 +422,7 @@ interface TweakSelectProps {
   onChange: (value: string) => void;
 }
 
-export function TweakSelect({ label, value, options, onChange }: TweakSelectProps) {
+function TweakSelect({ label, value, options, onChange }: TweakSelectProps) {
   return (
     <TweakRow label={label}>
       <select className="twk-field" value={value} onChange={(e) => onChange(e.target.value)}>
@@ -463,87 +437,6 @@ export function TweakSelect({ label, value, options, onChange }: TweakSelectProp
         })}
       </select>
     </TweakRow>
-  );
-}
-
-interface TweakTextProps {
-  label: string;
-  value: string;
-  placeholder?: string;
-  onChange: (value: string) => void;
-}
-
-export function TweakText({ label, value, placeholder, onChange }: TweakTextProps) {
-  return (
-    <TweakRow label={label}>
-      <input
-        className="twk-field"
-        type="text"
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </TweakRow>
-  );
-}
-
-interface TweakNumberProps {
-  label: string;
-  value: number;
-  min?: number;
-  max?: number;
-  step?: number;
-  unit?: string;
-  onChange: (value: number) => void;
-}
-
-export function TweakNumber({
-  label,
-  value,
-  min,
-  max,
-  step = 1,
-  unit = '',
-  onChange,
-}: TweakNumberProps) {
-  const clamp = (n: number): number => {
-    if (min != null && n < min) return min;
-    if (max != null && n > max) return max;
-    return n;
-  };
-  const startRef = React.useRef({ x: 0, val: 0 });
-  const onScrubStart = (e: React.PointerEvent<HTMLSpanElement>) => {
-    e.preventDefault();
-    startRef.current = { x: e.clientX, val: value };
-    const decimals = (String(step).split('.')[1] || '').length;
-    const move = (ev: PointerEvent) => {
-      const dx = ev.clientX - startRef.current.x;
-      const raw = startRef.current.val + dx * step;
-      const snapped = Math.round(raw / step) * step;
-      onChange(clamp(Number(snapped.toFixed(decimals))));
-    };
-    const up = () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
-  };
-  return (
-    <div className="twk-num">
-      <span className="twk-num-lbl" onPointerDown={onScrubStart}>
-        {label}
-      </span>
-      <input
-        type="number"
-        value={value}
-        min={min}
-        max={max}
-        step={step}
-        onChange={(e) => onChange(clamp(Number(e.target.value)))}
-      />
-      {unit && <span className="twk-num-unit">{unit}</span>}
-    </div>
   );
 }
 
@@ -620,19 +513,5 @@ export function TweakColor({ label, value, options, onChange }: TweakColorProps)
         })}
       </div>
     </TweakRow>
-  );
-}
-
-interface TweakButtonProps {
-  label: string;
-  onClick: () => void;
-  secondary?: boolean;
-}
-
-export function TweakButton({ label, onClick, secondary = false }: TweakButtonProps) {
-  return (
-    <button type="button" className={secondary ? 'twk-btn secondary' : 'twk-btn'} onClick={onClick}>
-      {label}
-    </button>
   );
 }
