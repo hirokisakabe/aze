@@ -14,7 +14,7 @@ import {
   TweakColor,
 } from "./tweaks-panel";
 
-const TODAY = "2024-06-02";
+const TODAY = new Date().toISOString().slice(0, 10);
 
 const TWEAK_DEFAULTS = {
   vibe: "editor",
