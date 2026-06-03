@@ -113,13 +113,32 @@ const __TWEAKS_STYLE = `
     filter:drop-shadow(0 1px 1px rgba(0,0,0,.3))}
 `;
 
+const TWEAKS_STORAGE_KEY = "aze:tweaks";
+
 export function useTweaks<T extends Record<string, unknown>>(
   defaults: T
 ): [T, (key: keyof T, val: T[keyof T]) => void] {
-  const [values, setValues] = React.useState<T>(defaults);
+  const [values, setValues] = React.useState<T>(() => {
+    try {
+      const stored = localStorage.getItem(TWEAKS_STORAGE_KEY);
+      if (stored) return { ...defaults, ...(JSON.parse(stored) as Partial<T>) };
+    } catch {
+      // fall through to defaults
+    }
+    return defaults;
+  });
+
   const setTweak = React.useCallback(
     (key: keyof T, val: T[keyof T]) => {
-      setValues((prev) => ({ ...prev, [key]: val }));
+      setValues((prev) => {
+        const next = { ...prev, [key]: val };
+        try {
+          localStorage.setItem(TWEAKS_STORAGE_KEY, JSON.stringify(next));
+        } catch {
+          // ignore write failures
+        }
+        return next;
+      });
       const edits: Record<string, unknown> = { [key as string]: val };
       window.parent.postMessage({ type: "__edit_mode_set_keys", edits }, "*");
       window.dispatchEvent(new CustomEvent("tweakchange", { detail: edits }));
