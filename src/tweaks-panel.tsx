@@ -121,24 +121,31 @@ export function useTweaks<T extends Record<string, unknown>>(
   const [values, setValues] = React.useState<T>(() => {
     try {
       const stored = localStorage.getItem(TWEAKS_STORAGE_KEY);
-      if (stored) return { ...defaults, ...(JSON.parse(stored) as Partial<T>) };
+      if (stored) {
+        const parsed = JSON.parse(stored) as Record<string, unknown>;
+        const merged = { ...defaults };
+        for (const key of Object.keys(defaults)) {
+          if (key in parsed) (merged as Record<string, unknown>)[key] = parsed[key];
+        }
+        return merged;
+      }
     } catch {
       // fall through to defaults
     }
     return defaults;
   });
 
+  React.useEffect(() => {
+    try {
+      localStorage.setItem(TWEAKS_STORAGE_KEY, JSON.stringify(values));
+    } catch {
+      // ignore write failures
+    }
+  }, [values]);
+
   const setTweak = React.useCallback(
     (key: keyof T, val: T[keyof T]) => {
-      setValues((prev) => {
-        const next = { ...prev, [key]: val };
-        try {
-          localStorage.setItem(TWEAKS_STORAGE_KEY, JSON.stringify(next));
-        } catch {
-          // ignore write failures
-        }
-        return next;
-      });
+      setValues((prev) => ({ ...prev, [key]: val }));
       const edits: Record<string, unknown> = { [key as string]: val };
       window.parent.postMessage({ type: "__edit_mode_set_keys", edits }, "*");
       window.dispatchEvent(new CustomEvent("tweakchange", { detail: edits }));
