@@ -1,3 +1,4 @@
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import type { TreeNode as TreeNodeData } from './data';
 
 interface ChevronProps {
@@ -31,10 +32,19 @@ interface TreeNodeProps {
   currentPath: string;
   onToggle: (path: string) => void;
   onOpen: (path: string) => void;
+  onContextMenu: (e: React.MouseEvent, path: string) => void;
   variant: string;
 }
 
-function TreeNode({ node, expanded, currentPath, onToggle, onOpen, variant }: TreeNodeProps) {
+function TreeNode({
+  node,
+  expanded,
+  currentPath,
+  onToggle,
+  onOpen,
+  onContextMenu,
+  variant,
+}: TreeNodeProps) {
   const isFolder = node.type === 'folder';
   const open = expanded.has(node.path);
   const active = node.path === currentPath;
@@ -66,6 +76,7 @@ function TreeNode({ node, expanded, currentPath, onToggle, onOpen, variant }: Tr
                 currentPath={currentPath}
                 onToggle={onToggle}
                 onOpen={onOpen}
+                onContextMenu={onContextMenu}
                 variant={variant}
               />
             ))}
@@ -79,6 +90,10 @@ function TreeNode({ node, expanded, currentPath, onToggle, onOpen, variant }: Tr
     <div
       className={'sb-row sb-file' + (active ? ' is-active' : '')}
       onClick={() => onOpen(node.path)}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        onContextMenu(e, node.path);
+      }}
     >
       {variant === 'markers' ? (
         <span className="sb-twirl sb-filemark" aria-hidden="true">
@@ -100,6 +115,7 @@ interface SidebarProps {
   onOpen: (path: string) => void;
   onNew: () => void;
   onExport: () => void;
+  onDelete: (path: string) => void;
   variant: string;
   count: number;
 }
@@ -112,9 +128,47 @@ export function Sidebar({
   onOpen,
   onNew,
   onExport,
+  onDelete,
   variant,
   count,
 }: SidebarProps) {
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; path: string } | null>(null);
+  const ctxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (ctxRef.current && !ctxRef.current.contains(e.target as Node)) {
+        setCtxMenu(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [ctxMenu]);
+
+  useLayoutEffect(() => {
+    if (!ctxMenu || !ctxRef.current) return;
+    const rect = ctxRef.current.getBoundingClientRect();
+    const clampedX = Math.min(ctxMenu.x, window.innerWidth - rect.width - 4);
+    const clampedY = Math.min(ctxMenu.y, window.innerHeight - rect.height - 4);
+    if (clampedX !== ctxMenu.x || clampedY !== ctxMenu.y) {
+      setCtxMenu({ ...ctxMenu, x: clampedX, y: clampedY });
+    }
+  }, [ctxMenu]);
+
+  const handleContextMenu = (e: React.MouseEvent, path: string) => {
+    setCtxMenu({ x: e.clientX, y: e.clientY, path });
+  };
+
+  const handleDelete = () => {
+    if (!ctxMenu) return;
+    const { path } = ctxMenu;
+    setCtxMenu(null);
+    if (window.confirm(`「${path}」を削除しますか？`)) {
+      onDelete(path);
+    }
+  };
+
   return (
     <aside className={'sidebar sb-variant-' + variant}>
       <div className="sb-brand">
@@ -134,6 +188,7 @@ export function Sidebar({
             currentPath={currentPath}
             onToggle={onToggle}
             onOpen={onOpen}
+            onContextMenu={handleContextMenu}
             variant={variant}
           />
         ))}
@@ -149,6 +204,14 @@ export function Sidebar({
           ↓
         </button>
       </div>
+
+      {ctxMenu && (
+        <div ref={ctxRef} className="sb-ctx-menu" style={{ left: ctxMenu.x, top: ctxMenu.y }}>
+          <button className="sb-ctx-item sb-ctx-delete" onClick={handleDelete}>
+            削除
+          </button>
+        </div>
+      )}
     </aside>
   );
 }
