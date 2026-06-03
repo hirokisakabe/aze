@@ -4,7 +4,7 @@ import JSZip from 'jszip';
 import { NOTES, buildTree, ancestorsOf } from './data';
 import { db } from './db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { renderMarkdown } from './markdown';
+import { MarkdownPreview } from './markdown';
 import { Sidebar } from './sidebar';
 import {
   useTweaks,
@@ -252,8 +252,6 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [mode, creating, enterEdit, saveEdit, cancelEdit]);
 
-  const rendered = useMemo(() => (current ? renderMarkdown(current.body) : null), [current]);
-
   return (
     <div
       className={'app vibe-' + t.vibe}
@@ -283,7 +281,9 @@ export default function App() {
             <div className="reader" key={currentPath}>
               <div className="reader-inner">
                 <Breadcrumb path={current.path} />
-                <article className="doc">{rendered}</article>
+                <article className="doc">
+                  {current && <MarkdownPreview content={current.body} />}
+                </article>
                 <footer className="meta">
                   <div className="meta-rule" />
                   <div className="meta-dates">

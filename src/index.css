@@ -390,7 +390,7 @@ ul.md-list:not(.md-tasklist) > li::before {
   color: var(--ink-soft);
   font-style: normal;
 }
-.md-quote div {
+.md-quote p {
   margin: 0.1em 0;
 }
 .md-code {
