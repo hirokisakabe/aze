@@ -136,7 +136,7 @@ export default function App() {
   useEffect(() => {
     db.notes.count().then((count) => {
       if (count === 0) {
-        db.notes.bulkAdd(NOTES.map((n) => ({ ...n })));
+        db.notes.bulkPut(NOTES.map((n) => ({ ...n })));
       }
     });
   }, []);
