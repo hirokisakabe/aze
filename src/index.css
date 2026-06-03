@@ -527,7 +527,6 @@ ul.md-list:not(.md-tasklist) > li::before {
   font-size: calc(var(--body-size) - 1px);
   line-height: 1.85;
   white-space: pre-wrap;
-  overflow-wrap: break-word;
   overflow: hidden;
   color: transparent;
   padding: 0;

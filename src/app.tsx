@@ -268,7 +268,10 @@ export default function App() {
     if (!ta || !t.showWhitespace) return;
     const sync = () => {
       const overlay = overlayRef.current;
-      if (overlay) overlay.scrollTop = ta.scrollTop;
+      if (overlay) {
+        overlay.scrollTop = ta.scrollTop;
+        overlay.scrollLeft = ta.scrollLeft;
+      }
     };
     ta.addEventListener('scroll', sync);
     return () => ta.removeEventListener('scroll', sync);
