@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import type { TreeNode as TreeNodeData } from './data';
 
 interface ChevronProps {
@@ -144,6 +144,16 @@ export function Sidebar({
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
+  }, [ctxMenu]);
+
+  useLayoutEffect(() => {
+    if (!ctxMenu || !ctxRef.current) return;
+    const rect = ctxRef.current.getBoundingClientRect();
+    const clampedX = Math.min(ctxMenu.x, window.innerWidth - rect.width - 4);
+    const clampedY = Math.min(ctxMenu.y, window.innerHeight - rect.height - 4);
+    if (clampedX !== ctxMenu.x || clampedY !== ctxMenu.y) {
+      setCtxMenu({ ...ctxMenu, x: clampedX, y: clampedY });
+    }
   }, [ctxMenu]);
 
   const handleContextMenu = (e: React.MouseEvent, path: string) => {
