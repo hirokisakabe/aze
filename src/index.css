@@ -117,6 +117,9 @@ body {
   padding: 2px 8px 16px;
 }
 .sb-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   padding: 10px 18px 14px;
   font-family: var(--mono);
   font-size: 10.5px;

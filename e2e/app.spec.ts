@@ -57,19 +57,24 @@ test('エクスポートボタンで zip がダウンロードされる', async 
   await createNote(page, 'export-note.md');
   await page.getByRole('textbox').fill('# Export Note\n\nExport me.');
   await page.locator('.bar-save').click();
+  await createNote(page, 'daily/2024-06-02.md');
+  await page.getByRole('textbox').fill('# Daily Note\n\nNested export.');
+  await page.locator('.bar-save').click();
 
   const downloadPromise = page.waitForEvent('download');
   await page.getByLabel('エクスポート').click();
   const download = await downloadPromise;
 
-  expect(download.suggestedFilename()).toBe('notes.zip');
+  const today = new Intl.DateTimeFormat('sv-SE').format(new Date());
+  expect(download.suggestedFilename()).toBe(`notes-export-${today}.zip`);
 
   const path = await download.path();
   expect(path).not.toBeNull();
 
   const data = fs.readFileSync(path!);
   const zip = await JSZip.loadAsync(data);
-  const entries = Object.keys(zip.files);
-  expect(entries.length).toBeGreaterThan(0);
-  expect(entries.some((e) => e.endsWith('.md'))).toBe(true);
+  expect(await zip.file('export-note.md')?.async('string')).toBe('# Export Note\n\nExport me.');
+  expect(await zip.file('daily/2024-06-02.md')?.async('string')).toBe(
+    '# Daily Note\n\nNested export.'
+  );
 });
