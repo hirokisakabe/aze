@@ -343,6 +343,7 @@ export default function App() {
   );
 
   const exportNotes = useCallback(async () => {
+    const today = new Intl.DateTimeFormat('sv-SE').format(new Date());
     const zip = new JSZip();
     const all = await db.notes.toArray();
     for (const note of all) {
@@ -352,7 +353,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `notes-export-${TODAY}.zip`;
+    a.download = `notes-export-${today}.zip`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 0);
   }, []);
