@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import type { CSSProperties } from 'react';
 import JSZip from 'jszip';
-import { NOTES, buildTree, ancestorsOf } from './data';
+import { buildTree, ancestorsOf } from './data';
 import { db } from './db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { MarkdownPreview } from './markdown';
@@ -245,14 +245,6 @@ export default function App() {
         next.add(path);
       }
       return next;
-    });
-  }, []);
-
-  useEffect(() => {
-    db.notes.count().then((count) => {
-      if (count === 0) {
-        db.notes.bulkPut(NOTES.map((n) => ({ ...n })));
-      }
     });
   }, []);
 
