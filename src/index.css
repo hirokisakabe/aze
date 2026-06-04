@@ -290,7 +290,7 @@ body {
 /* markdown document */
 .doc {
   font-size: var(--body-size);
-  line-height: 1.78;
+  line-height: 1.64;
   color: var(--ink);
 }
 .doc > *:first-child {
@@ -309,16 +309,16 @@ body {
 }
 .md-h2 {
   font-size: 1.32em;
-  margin: 2em 0 0.6em;
+  margin: 1.55em 0 0.55em;
 }
 .md-h3 {
   font-size: 1.08em;
-  margin: 1.6em 0 0.5em;
+  margin: 1.3em 0 0.45em;
   color: var(--ink-soft);
 }
 .md-h4 {
   font-size: 1em;
-  margin: 1.4em 0 0.4em;
+  margin: 1.15em 0 0.35em;
   color: var(--ink-soft);
 }
 .md-p {
@@ -420,7 +420,7 @@ ul.md-list:not(.md-tasklist) > li::before {
 .md-hr {
   border: none;
   border-top: 1px solid var(--line);
-  margin: 2.2em 0;
+  margin: 1.55em 0;
 }
 .md-link {
   color: var(--accent);
@@ -683,7 +683,7 @@ kbd {
   --hover: #e9ebef;
 }
 .vibe-editor .doc {
-  line-height: 1.7;
+  line-height: 1.6;
 }
 .vibe-editor .md-h1 {
   font-size: 1.6em;
@@ -717,7 +717,7 @@ kbd {
   padding-top: 88px;
 }
 .vibe-editorial .doc {
-  line-height: 1.85;
+  line-height: 1.72;
 }
 .vibe-editorial .md-h1 {
   font-size: 2.5em;
@@ -728,7 +728,7 @@ kbd {
 }
 .vibe-editorial .md-h2 {
   font-size: 1.45em;
-  margin-top: 1.9em;
+  margin-top: 1.65em;
 }
 .vibe-editorial .crumb {
   margin-bottom: 52px;
