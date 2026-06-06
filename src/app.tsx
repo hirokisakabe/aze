@@ -447,7 +447,7 @@ export default function App() {
                 <div className="meta">
                   <div className="meta-dates">
                     <span>作成 {current.created}</span>
-                    <span className="meta-dot">·</span>
+                    <span className="meta-dot">/</span>
                     <span>更新 {current.updated}</span>
                   </div>
                   <div className="meta-rule" />
