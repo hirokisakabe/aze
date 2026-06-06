@@ -262,7 +262,7 @@ body {
   position: relative;
 }
 .reader-inner {
-  padding: 60px 72px 88px;
+  padding: 60px 72px 132px;
 }
 .editor {
   display: flex;
@@ -472,7 +472,7 @@ ul.md-list:not(.md-tasklist) > li::before {
 .edit-fab {
   position: fixed;
   right: 26px;
-  bottom: 24px;
+  bottom: 72px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -509,7 +509,7 @@ ul.md-list:not(.md-tasklist) > li::before {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 60px 72px 24px;
+  padding: 60px 72px 132px;
 }
 .editor-area-wrap {
   flex: 1;
@@ -605,6 +605,17 @@ ul.md-list:not(.md-tasklist) > li::before {
 }
 .bar-save:hover {
   background: color-mix(in oklab, var(--accent) 18%, var(--bg));
+}
+.editor-save-fab {
+  position: fixed;
+  right: 26px;
+  bottom: 72px;
+  padding: 8px 14px;
+  background: var(--bg);
+  box-shadow: 0 2px 10px rgba(40, 36, 30, 0.07);
+}
+.editor-save-fab kbd {
+  background: color-mix(in oklab, var(--accent) 10%, var(--panel));
 }
 kbd {
   font-family: var(--mono);
@@ -779,4 +790,57 @@ kbd {
 }
 .sb-ctx-delete:hover {
   background: rgba(192, 57, 43, 0.08);
+}
+
+@media (max-width: 720px) {
+  .app {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    height: min(34vh, 260px);
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .main {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+    padding: 14px;
+  }
+
+  .reader,
+  .editor {
+    min-height: calc(66vh - 28px);
+  }
+
+  .reader-inner,
+  .editor-inner {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
+  .reader-inner {
+    padding-bottom: 144px;
+  }
+
+  .editor-inner {
+    padding-bottom: 144px;
+  }
+
+  .editor-area {
+    min-height: 30vh;
+  }
+
+  .edit-fab,
+  .editor-save-fab {
+    right: 16px;
+    bottom: 96px;
+  }
+
+  .editor-bar {
+    padding: 10px 16px;
+  }
 }

@@ -484,10 +484,10 @@ export default function App() {
                 <span className="bar-hint">
                   <kbd>esc</kbd> 取消
                 </span>
-                <button className="bar-save" onClick={saveEdit}>
-                  保存 <kbd>⌘S</kbd>
-                </button>
               </div>
+              <button className="bar-save editor-save-fab" onClick={saveEdit}>
+                保存 <kbd>⌘S</kbd>
+              </button>
             </div>
           )
         ) : (
