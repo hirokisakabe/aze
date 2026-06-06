@@ -502,7 +502,9 @@ ul.md-list:not(.md-tasklist) > li::before {
   letter-spacing: 0.03em;
   color: var(--ink-faint);
   display: flex;
+  align-items: center;
   gap: 10px;
+  line-height: 1;
 }
 .meta-dot {
   opacity: 0.85;
