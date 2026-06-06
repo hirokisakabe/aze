@@ -434,6 +434,16 @@ ul.md-list:not(.md-tasklist) > li::before {
 .md-link:hover {
   border-bottom-color: var(--accent);
 }
+.md-img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.35em auto;
+  padding: 4px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
 .doc strong {
   font-weight: 700;
 }
