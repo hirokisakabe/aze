@@ -157,13 +157,19 @@ function Breadcrumb({ path }: BreadcrumbProps) {
   );
 }
 
+function getParentFolder(path: string): string {
+  const lastSlash = path.lastIndexOf('/');
+  return lastSlash === -1 ? '' : path.slice(0, lastSlash + 1);
+}
+
 interface NewNoteDialogProps {
+  defaultPrefix: string;
   onCreate: (path: string) => void;
   onCancel: () => void;
 }
 
-function NewNoteDialog({ onCreate, onCancel }: NewNoteDialogProps) {
-  const [val, setVal] = useState('');
+function NewNoteDialog({ defaultPrefix, onCreate, onCancel }: NewNoteDialogProps) {
+  const [val, setVal] = useState(defaultPrefix);
   const ref = useRef<HTMLInputElement>(null);
   useEffect(() => {
     ref.current?.focus();
@@ -495,7 +501,13 @@ export default function App() {
         )}
       </main>
 
-      {creating && <NewNoteDialog onCreate={createNote} onCancel={() => setCreating(false)} />}
+      {creating && (
+        <NewNoteDialog
+          defaultPrefix={getParentFolder(currentPath)}
+          onCreate={createNote}
+          onCancel={() => setCreating(false)}
+        />
+      )}
 
       <TweaksPanel>
         <TweakSection label="探る軸" />
