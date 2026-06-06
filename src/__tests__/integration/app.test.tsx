@@ -239,6 +239,96 @@ describe('新規ノートダイアログからノートを作成できる', () =
   });
 });
 
+describe('新規ノートダイアログのデフォルトパスは現在のノートのフォルダに合わせる', () => {
+  it('ルート直下のノートを開いているときはデフォルトが空になる', async () => {
+    await db.notes.bulkPut([NOTE_A]);
+    render(<App />);
+
+    await findSidebarText('Note A');
+    await userEvent.click(sidebarText('Note A'));
+    await screen.findByText('Content of note A.');
+
+    await userEvent.click(screen.getByLabelText('新規ノート'));
+    const input = screen.getByPlaceholderText('ideas/new-idea.md') as HTMLInputElement;
+
+    expect(input.value).toBe('');
+  });
+
+  it('フォルダ配下のノートを開いているときは入力欄のデフォルトがそのフォルダになる', async () => {
+    const folderNote: Note = {
+      path: 'daily/2024-06-02.md',
+      body: '# Daily Note',
+      created: '2024-06-02',
+      updated: '2024-06-02',
+    };
+    await db.notes.bulkPut([folderNote]);
+    render(<App />);
+
+    await findSidebarText('Daily Note');
+    await userEvent.click(sidebarText('Daily Note'));
+
+    await userEvent.click(screen.getByLabelText('新規ノート'));
+    const input = screen.getByPlaceholderText('ideas/new-idea.md') as HTMLInputElement;
+
+    expect(input.value).toBe('daily/');
+  });
+
+  it('デフォルトパスにファイル名を追加するとそのフォルダ配下に作成される', async () => {
+    const folderNote: Note = {
+      path: 'daily/2024-06-02.md',
+      body: '# Daily Note',
+      created: '2024-06-02',
+      updated: '2024-06-02',
+    };
+    await db.notes.bulkPut([folderNote]);
+    render(<App />);
+
+    await findSidebarText('Daily Note');
+    await userEvent.click(sidebarText('Daily Note'));
+
+    await userEvent.click(screen.getByLabelText('新規ノート'));
+    const input = screen.getByPlaceholderText('ideas/new-idea.md');
+    await userEvent.type(input, 'new-entry.md');
+    await userEvent.keyboard('{Enter}');
+
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText('ideas/new-idea.md')).toBeNull();
+    });
+
+    const saved = await db.notes.get('daily/new-entry.md');
+    expect(saved).toBeDefined();
+    expect(saved?.path).toBe('daily/new-entry.md');
+  });
+
+  it('入力欄を編集して別フォルダのパスを指定した場合はその値が優先される', async () => {
+    const folderNote: Note = {
+      path: 'daily/2024-06-02.md',
+      body: '# Daily Note',
+      created: '2024-06-02',
+      updated: '2024-06-02',
+    };
+    await db.notes.bulkPut([folderNote]);
+    render(<App />);
+
+    await findSidebarText('Daily Note');
+    await userEvent.click(sidebarText('Daily Note'));
+
+    await userEvent.click(screen.getByLabelText('新規ノート'));
+    const input = screen.getByPlaceholderText('ideas/new-idea.md') as HTMLInputElement;
+    await userEvent.clear(input);
+    await userEvent.type(input, 'other/custom-note.md');
+    await userEvent.keyboard('{Enter}');
+
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText('ideas/new-idea.md')).toBeNull();
+    });
+
+    const saved = await db.notes.get('other/custom-note.md');
+    expect(saved).toBeDefined();
+    expect(saved?.path).toBe('other/custom-note.md');
+  });
+});
+
 describe('編集中に別ノートへ移動したとき変更が自動保存される', () => {
   it('編集中に別ノートをクリックすると draft が自動保存されて移動する', async () => {
     await db.notes.bulkPut([NOTE_A, NOTE_B]);
