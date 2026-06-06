@@ -444,17 +444,17 @@ export default function App() {
             <div className="reader" key={currentPath}>
               <div className="reader-inner">
                 <Breadcrumb path={current.path} />
-                <article className="doc">
-                  {current && <MarkdownPreview content={current.body} />}
-                </article>
-                <footer className="meta">
-                  <div className="meta-rule" />
+                <div className="meta">
                   <div className="meta-dates">
                     <span>作成 {current.created}</span>
                     <span className="meta-dot">·</span>
                     <span>更新 {current.updated}</span>
                   </div>
-                </footer>
+                  <div className="meta-rule" />
+                </div>
+                <article className="doc">
+                  {current && <MarkdownPreview content={current.body} />}
+                </article>
               </div>
               <button className="edit-fab" onClick={enterEdit} title="編集 (E)">
                 <span className="fab-key">E</span> 編集
