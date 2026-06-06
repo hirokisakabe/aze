@@ -565,6 +565,8 @@ ul.md-list:not(.md-tasklist) > li::before {
 }
 .editor-area {
   flex: 1;
+  position: relative;
+  z-index: 1;
   width: 100%;
   border: none;
   outline: none;
@@ -581,6 +583,7 @@ ul.md-list:not(.md-tasklist) > li::before {
 .editor-ws-overlay {
   position: absolute;
   inset: 0;
+  z-index: 2;
   pointer-events: none;
   font-family: var(--sans);
   font-size: calc(var(--body-size) * 0.8);
@@ -594,7 +597,7 @@ ul.md-list:not(.md-tasklist) > li::before {
   tab-size: 8;
 }
 .ws-dot {
-  color: color-mix(in oklab, var(--ink) 35%, transparent);
+  color: color-mix(in oklab, var(--ink) 50%, transparent);
 }
 .ws-tab {
   color: transparent;
@@ -604,7 +607,7 @@ ul.md-list:not(.md-tasklist) > li::before {
   content: '→';
   position: absolute;
   left: 0;
-  color: color-mix(in oklab, var(--ink) 35%, transparent);
+  color: color-mix(in oklab, var(--ink) 50%, transparent);
 }
 .editor-bar {
   position: sticky;

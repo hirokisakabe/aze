@@ -13,7 +13,6 @@ import {
   TweakRadio,
   TweakSlider,
   TweakColor,
-  TweakToggle,
 } from './tweaks-panel';
 
 const TODAY = new Intl.DateTimeFormat('sv-SE').format(new Date());
@@ -24,7 +23,6 @@ const TWEAK_DEFAULTS = {
   measure: 1200,
   fontSize: 17,
   accent: '#5b6b86',
-  showWhitespace: true,
 };
 
 const VIBE_LABELS: Record<string, string> = {
@@ -374,7 +372,7 @@ export default function App() {
 
   useEffect(() => {
     const ta = taRef.current;
-    if (!ta || !t.showWhitespace) return;
+    if (!ta) return;
     const sync = () => {
       const overlay = overlayRef.current;
       if (overlay) {
@@ -384,7 +382,7 @@ export default function App() {
     };
     ta.addEventListener('scroll', sync);
     return () => ta.removeEventListener('scroll', sync);
-  }, [t.showWhitespace]);
+  }, [mode]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -465,11 +463,9 @@ export default function App() {
               <div className="editor-inner">
                 <Breadcrumb path={current.path} />
                 <div className="editor-area-wrap">
-                  {t.showWhitespace && (
-                    <div ref={overlayRef} className="editor-ws-overlay" aria-hidden="true">
-                      {renderWsOverlay(draft)}
-                    </div>
-                  )}
+                  <div ref={overlayRef} className="editor-ws-overlay" aria-hidden="true">
+                    {renderWsOverlay(draft)}
+                  </div>
                   <textarea
                     ref={taRef}
                     className="editor-area"
@@ -548,12 +544,6 @@ export default function App() {
           value={t.accent}
           options={['#6b6b6b', '#5b6b86', '#5b7a68', '#86705b']}
           onChange={(v) => setTweak('accent', v)}
-        />
-        <TweakSection label="エディタ" />
-        <TweakToggle
-          label="ホワイトスペース表示"
-          value={t.showWhitespace}
-          onChange={(v) => setTweak('showWhitespace', v)}
         />
       </TweaksPanel>
     </div>
