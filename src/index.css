@@ -435,7 +435,7 @@ ul.md-list:not(.md-tasklist) > li::before {
 .md-img {
   display: block;
   width: auto;
-  max-width: 100%;
+  max-width: min(100%, 720px);
   max-height: min(70vh, 720px);
   height: auto;
   margin: 1.35em auto;
