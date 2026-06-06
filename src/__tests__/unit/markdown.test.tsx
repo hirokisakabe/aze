@@ -80,6 +80,18 @@ describe('MarkdownPreview', () => {
     expect(a!.className).toContain('md-link');
   });
 
+  it('画像に md-img クラスと Markdown の属性が付与される', () => {
+    const { container } = render(
+      <MarkdownPreview content="![スクリーンショット](https://example.com/image.png)" />
+    );
+    const img = container.querySelector('img');
+    expect(img).not.toBeNull();
+    expect(img!.className).toContain('md-img');
+    expect(img!.getAttribute('src')).toBe('https://example.com/image.png');
+    expect(img!.getAttribute('alt')).toBe('スクリーンショット');
+    expect(img!.getAttribute('loading')).toBe('lazy');
+  });
+
   it('タスクリストを ul.md-tasklist に変換する', () => {
     const { container } = render(<MarkdownPreview content={'- [ ] TODO\n- [x] Done'} />);
     const ul = container.querySelector('ul');

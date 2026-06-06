@@ -66,6 +66,9 @@ const components: Components = {
       {children}
     </a>
   ),
+  img: ({ alt, src, title }) => (
+    <img className="md-img" src={src} alt={alt ?? ''} title={title} loading="lazy" />
+  ),
 };
 
 export function MarkdownPreview({ content }: { content: string }) {
