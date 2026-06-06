@@ -434,8 +434,11 @@ ul.md-list:not(.md-tasklist) > li::before {
 }
 .md-img {
   display: block;
+  width: auto;
   max-width: 100%;
+  max-height: min(70vh, 720px);
   height: auto;
+  object-fit: contain;
   margin: 1.35em auto;
   padding: 4px;
   background: var(--panel);
