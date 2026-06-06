@@ -102,7 +102,7 @@ function TreeNode({
       ) : (
         <span className="sb-twirl sb-twirl-empty" aria-hidden="true" />
       )}
-      <span className="sb-name">{node.name.replace(/\.md$/, '')}</span>
+      <span className="sb-name">{node.title ?? node.name.replace(/\.md$/, '')}</span>
     </div>
   );
 }

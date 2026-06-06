@@ -9,6 +9,7 @@ export interface TreeNode {
   name: string;
   path: string;
   type: 'file' | 'folder';
+  title?: string;
   children?: TreeNode[];
 }
 
@@ -44,7 +45,7 @@ export function buildTree(notes: Note[]): TreeNode {
       let child = cur.children.find((c) => c.name === part);
       if (!child) {
         child = isFile
-          ? { name: part, path: acc, type: 'file' }
+          ? { name: part, path: acc, type: 'file', title: noteTitle(note) }
           : { name: part, path: acc, type: 'folder', children: [] };
         cur.children.push(child);
       }

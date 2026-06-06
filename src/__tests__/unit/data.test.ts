@@ -58,6 +58,18 @@ describe('buildTree', () => {
     expect(tree.children?.map((c) => c.name)).toContain('inbox.md');
   });
 
+  it('ファイルノードは先頭の # 見出しを表示タイトルとして保持する', () => {
+    const tree = buildTree([note('inbox.md', '# Inbox Title\n\nBody')]);
+    expect(tree.children?.[0].name).toBe('inbox.md');
+    expect(tree.children?.[0].title).toBe('Inbox Title');
+  });
+
+  it('見出しがないファイルノードはファイル名由来の表示タイトルを保持する', () => {
+    const tree = buildTree([note('plain-note.md', 'Plain text')]);
+    expect(tree.children?.[0].name).toBe('plain-note.md');
+    expect(tree.children?.[0].title).toBe('plain-note');
+  });
+
   it('サブフォルダのノートはフォルダ階層に配置される', () => {
     const tree = buildTree([note('daily/2024-06-02.md')]);
     const daily = tree.children?.find((c) => c.name === 'daily');
