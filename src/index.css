@@ -566,9 +566,9 @@ ul.md-list:not(.md-tasklist) > li::before {
   outline: none;
   resize: none;
   background: transparent;
-  font-family: var(--mono);
-  font-size: calc(var(--body-size) - 1px);
-  line-height: 1.85;
+  font-family: var(--sans);
+  font-size: calc(var(--body-size) * 0.8);
+  line-height: 1.56;
   color: var(--ink);
   caret-color: var(--accent);
   min-height: 55vh;
@@ -578,9 +578,9 @@ ul.md-list:not(.md-tasklist) > li::before {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  font-family: var(--mono);
-  font-size: calc(var(--body-size) - 1px);
-  line-height: 1.85;
+  font-family: var(--sans);
+  font-size: calc(var(--body-size) * 0.8);
+  line-height: 1.56;
   white-space: pre-wrap;
   overflow: hidden;
   color: transparent;
