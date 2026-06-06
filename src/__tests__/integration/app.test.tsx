@@ -72,6 +72,8 @@ describe('編集モード → 保存 → 閲覧モードに戻る', () => {
     render(<App />);
 
     await findSidebarText('Note A');
+    await userEvent.click(sidebarText('Note A'));
+    await screen.findByText('Content of note A.');
 
     await userEvent.click(screen.getByTitle('編集 (E)'));
     const textarea = screen.getByRole('textbox');
