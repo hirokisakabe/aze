@@ -2,6 +2,7 @@
 /* eslint-disable react-hooks/refs */
 
 import React from 'react';
+import { X, Check } from 'lucide-react';
 
 const __TWEAKS_STYLE = `
   .twk-panel{position:fixed;right:16px;bottom:16px;z-index:2147483646;width:280px;
@@ -16,7 +17,8 @@ const __TWEAKS_STYLE = `
     padding:10px 8px 10px 14px;cursor:move;user-select:none}
   .twk-hd b{font-size:12px;font-weight:600;letter-spacing:.01em}
   .twk-x{appearance:none;border:0;background:transparent;color:rgba(41,38,27,.55);
-    width:22px;height:22px;border-radius:6px;cursor:default;font-size:13px;line-height:1}
+    width:22px;height:22px;border-radius:6px;cursor:default;
+    display:flex;align-items:center;justify-content:center;}
   .twk-x:hover{background:rgba(0,0,0,.06);color:#29261b}
   .twk-body{padding:2px 14px 14px;display:flex;flex-direction:column;gap:10px;
     overflow-y:auto;overflow-x:hidden;min-height:0;
@@ -231,7 +233,7 @@ export function TweaksPanel({ title = 'Tweaks', children }: TweaksPanelProps) {
             onMouseDown={(e) => e.stopPropagation()}
             onClick={dismiss}
           >
-            ✕
+            <X size={13} aria-hidden="true" />
           </button>
         </div>
         <div className="twk-body">{children}</div>
@@ -462,16 +464,12 @@ function __twkIsLight(hex: string): boolean {
 }
 
 const __TwkCheck = ({ light }: { light: boolean }) => (
-  <svg viewBox="0 0 14 14" aria-hidden="true">
-    <path
-      d="M3 7.2 5.8 10 11 4.2"
-      fill="none"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      stroke={light ? 'rgba(0,0,0,.78)' : '#fff'}
-    />
-  </svg>
+  <Check
+    size={13}
+    aria-hidden="true"
+    stroke={light ? 'rgba(0,0,0,.78)' : '#fff'}
+    strokeWidth={2.2}
+  />
 );
 
 interface TweakColorProps {

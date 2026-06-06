@@ -1,30 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { ChevronRight, Plus, Download } from 'lucide-react';
 import type { TreeNode as TreeNodeData } from './data';
-
-interface ChevronProps {
-  open: boolean;
-}
-
-function Chevron({ open }: ChevronProps) {
-  return (
-    <svg
-      className={'sb-chevron' + (open ? ' is-open' : '')}
-      width="9"
-      height="9"
-      viewBox="0 0 10 10"
-      aria-hidden="true"
-    >
-      <path
-        d="M3 1.5 L7 5 L3 8.5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 interface TreeNodeProps {
   node: TreeNodeData;
@@ -59,7 +35,12 @@ function TreeNode({
         >
           {showChevron ? (
             <span className="sb-twirl">
-              <Chevron open={open} />
+              <ChevronRight
+                className={'sb-chevron' + (open ? ' is-open' : '')}
+                width={9}
+                height={9}
+                aria-hidden="true"
+              />
             </span>
           ) : (
             <span className="sb-twirl sb-twirl-empty" aria-hidden="true" />
@@ -175,7 +156,7 @@ export function Sidebar({
         <span className="brand-mark" aria-hidden="true"></span>
         <span className="brand-name">aze</span>
         <button className="sb-new" title="新規ノート（N）" onClick={onNew} aria-label="新規ノート">
-          +
+          <Plus width={14} height={14} aria-hidden="true" />
         </button>
       </div>
       <div className="sb-rootlabel">~/notes</div>
@@ -201,7 +182,7 @@ export function Sidebar({
           onClick={onExport}
           aria-label="エクスポート"
         >
-          ↓
+          <Download width={14} height={14} aria-hidden="true" />
         </button>
       </div>
 
