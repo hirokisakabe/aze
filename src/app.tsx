@@ -24,7 +24,7 @@ const TWEAK_DEFAULTS = {
   measure: 1200,
   fontSize: 17,
   accent: '#5b6b86',
-  showWhitespace: false,
+  showWhitespace: true,
 };
 
 const VIBE_LABELS: Record<string, string> = {
