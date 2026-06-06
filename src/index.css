@@ -558,6 +558,10 @@ ul.md-list:not(.md-tasklist) > li::before {
   position: relative;
   display: flex;
   flex-direction: column;
+  background: color-mix(in oklab, var(--panel) 35%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px 20px;
 }
 .editor-area {
   flex: 1;
@@ -584,7 +588,7 @@ ul.md-list:not(.md-tasklist) > li::before {
   white-space: pre-wrap;
   overflow: hidden;
   color: transparent;
-  padding: 0;
+  padding: 18px 20px;
   margin: 0;
   border: none;
   tab-size: 8;
