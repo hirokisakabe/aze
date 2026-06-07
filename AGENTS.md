@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-This is a Vite + React + TypeScript application. Source files live in `src/`, with the main entry at `src/main.tsx` and app-level UI in `src/app.tsx`. Shared modules include `src/data.ts`, `src/db.ts`, `src/markdown.tsx`, `src/sidebar.tsx`, and `src/tweaks-panel.tsx`. Unit and integration tests are under `src/__tests__/`, split into `unit/` and `integration/`. Playwright tests live in `e2e/`. Build output goes to `dist/` and should not be edited directly.
+This is a Vite + React + TypeScript application. Source files live in `src/`, with the main entry at `src/main.tsx` and app-level UI in `src/app.tsx`. Shared modules include `src/data.ts`, `src/db.ts`, `src/markdown.tsx`, and `src/sidebar.tsx`. Unit and integration tests are under `src/__tests__/`, split into `unit/` and `integration/`. Playwright tests live in `e2e/`. Build output goes to `dist/` and should not be edited directly.
 
 ## Build, Test, and Development Commands
 
@@ -20,7 +20,7 @@ This is a Vite + React + TypeScript application. Source files live in `src/`, wi
 
 ## Coding Style & Naming Conventions
 
-Use TypeScript and React function components. Follow Prettier settings: 2-space indentation, semicolons, single quotes, `printWidth` 100, and ES5 trailing commas. ESLint forbids `any` in app and e2e code. Prefer kebab-case file names such as `tweaks-panel.tsx`; use PascalCase for React components and camelCase for functions, variables, and hooks.
+Use TypeScript and React function components. Follow Prettier settings: 2-space indentation, semicolons, single quotes, `printWidth` 100, and ES5 trailing commas. ESLint forbids `any` in app and e2e code. Prefer kebab-case file names such as `sidebar.tsx`; use PascalCase for React components and camelCase for functions, variables, and hooks.
 
 ## Testing Guidelines
 
