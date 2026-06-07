@@ -1,4 +1,5 @@
-import React, { createContext, useContext } from 'react';
+import { Children, createContext, isValidElement, useContext } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
@@ -6,7 +7,7 @@ import type { Components } from 'react-markdown';
 
 const InsidePreContext = createContext(false);
 
-function Pre({ children }: { children?: React.ReactNode }) {
+function Pre({ children }: { children?: ReactNode }) {
   return (
     <InsidePreContext.Provider value={true}>
       <pre className="md-pre">{children}</pre>
@@ -14,7 +15,7 @@ function Pre({ children }: { children?: React.ReactNode }) {
   );
 }
 
-function Code({ children, className }: { children?: React.ReactNode; className?: string }) {
+function Code({ children, className }: { children?: ReactNode; className?: string }) {
   const insidePre = useContext(InsidePreContext);
   if (insidePre) {
     return <code className={className}>{children}</code>;
@@ -22,15 +23,15 @@ function Code({ children, className }: { children?: React.ReactNode; className?:
   return <code className="md-code">{children}</code>;
 }
 
-function Li({ children, className }: { children?: React.ReactNode; className?: string }) {
+function Li({ children, className }: { children?: ReactNode; className?: string }) {
   if (className?.includes('task-list-item')) {
-    const childArray = React.Children.toArray(children);
-    const checkbox = childArray.find(
-      (child) => React.isValidElement(child) && child.type === 'input'
-    ) as React.ReactElement<{ checked?: boolean }> | undefined;
+    const childArray = Children.toArray(children);
+    const checkbox = childArray.find((child) => isValidElement(child) && child.type === 'input') as
+      | ReactElement<{ checked?: boolean }>
+      | undefined;
     const done = checkbox?.props?.checked ?? false;
     const textChildren = childArray.filter(
-      (child) => !(React.isValidElement(child) && child.type === 'input')
+      (child) => !(isValidElement(child) && child.type === 'input')
     );
     return (
       <li className={`md-li md-task${done ? ' is-done' : ''}`}>
@@ -42,6 +43,18 @@ function Li({ children, className }: { children?: React.ReactNode; className?: s
     );
   }
   return <li className="md-li">{children}</li>;
+}
+
+function isExternalUrl(href?: string) {
+  if (!href) return false;
+  if (href.startsWith('//')) return true;
+
+  try {
+    const url = new URL(href);
+    return !['javascript:', 'vbscript:', 'data:'].includes(url.protocol);
+  } catch {
+    return false;
+  }
 }
 
 const components: Components = {
@@ -61,11 +74,20 @@ const components: Components = {
   pre: Pre,
   code: Code,
   hr: () => <hr className="md-hr" />,
-  a: ({ children, href }) => (
-    <a className="md-link" href={href} onClick={(e: React.MouseEvent) => e.preventDefault()}>
-      {children}
-    </a>
-  ),
+  a: ({ children, href }) => {
+    const external = isExternalUrl(href);
+    return (
+      <a
+        className="md-link"
+        href={href}
+        target={external ? '_blank' : undefined}
+        rel={external ? 'noreferrer' : undefined}
+        onClick={external ? undefined : (e) => e.preventDefault()}
+      >
+        {children}
+      </a>
+    );
+  },
   img: ({ alt, src, title }) => (
     <img className="md-img" src={src} alt={alt ?? ''} title={title} loading="lazy" />
   ),

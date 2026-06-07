@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import { MarkdownPreview } from '../../markdown';
 
 describe('MarkdownPreview', () => {
@@ -73,11 +73,37 @@ describe('MarkdownPreview', () => {
     expect(code!.className).toContain('md-code');
   });
 
-  it('リンクに md-link クラスが付与される', () => {
+  it('外部リンクに md-link クラスと別タブ用属性が付与される', () => {
     const { container } = render(<MarkdownPreview content="[example](https://example.com)" />);
     const a = container.querySelector('a');
     expect(a).not.toBeNull();
     expect(a!.className).toContain('md-link');
+    expect(a!.getAttribute('target')).toBe('_blank');
+    expect(a!.getAttribute('rel')).toBe('noreferrer');
+    expect(fireEvent.click(a!)).toBe(true);
+  });
+
+  it('絶対 URL 形式のリンクを外部リンクとして扱う', () => {
+    const { container } = render(
+      <MarkdownPreview content="[mail](mailto:a@example.com)\n[site](//example.com)" />
+    );
+    const links = container.querySelectorAll('a');
+    expect(links).toHaveLength(2);
+    for (const a of links) {
+      expect(a.getAttribute('target')).toBe('_blank');
+      expect(a.getAttribute('rel')).toBe('noreferrer');
+      expect(fireEvent.click(a)).toBe(true);
+    }
+  });
+
+  it('相対リンクは別タブ化せず遷移も抑止する', () => {
+    const { container } = render(<MarkdownPreview content="[other](./other.md)" />);
+    const a = container.querySelector('a');
+    expect(a).not.toBeNull();
+    expect(a!.className).toContain('md-link');
+    expect(a!.getAttribute('target')).toBeNull();
+    expect(a!.getAttribute('rel')).toBeNull();
+    expect(fireEvent.click(a!)).toBe(false);
   });
 
   it('画像に md-img クラスと Markdown の属性が付与される', () => {
