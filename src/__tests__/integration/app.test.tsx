@@ -466,3 +466,101 @@ describe('コンテキストメニューからノートを削除できる', () =
     vi.restoreAllMocks();
   });
 });
+
+describe('既存ノートのパスを変更できる', () => {
+  it('ファイル名だけを変更し、DB と現在選択中ノートを新しい path に更新する', async () => {
+    await db.notes.bulkPut([NOTE_A]);
+    await db.settings.put({ key: 'lastOpenedPath', value: 'note-a.md' });
+    render(<App />);
+
+    await screen.findByText('Content of note A.');
+    fireEvent.contextMenu(sidebarText('Note A'));
+    await userEvent.click(screen.getByText('パス変更'));
+
+    const input = screen.getByPlaceholderText('archive/note.md');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'renamed-note.md');
+    await userEvent.keyboard('{Enter}');
+
+    await waitFor(async () => {
+      expect(await db.notes.get('note-a.md')).toBeUndefined();
+      const renamed = await db.notes.get('renamed-note.md');
+      expect(renamed?.body).toBe(NOTE_A.body);
+      expect(renamed?.created).toBe(NOTE_A.created);
+      expect(renamed?.updated).toBe(NOTE_A.updated);
+    });
+    await waitFor(() => {
+      expect(document.querySelector('.crumb')?.textContent).toContain('renamed-note');
+    });
+    expect((await db.settings.get('lastOpenedPath'))?.value).toBe('renamed-note.md');
+  });
+
+  it('フォルダを含む path に移動するとサイドバーとパンくずが新しい path を表示する', async () => {
+    await db.notes.bulkPut([NOTE_A]);
+    render(<App />);
+
+    await screen.findByText('Content of note A.');
+    fireEvent.contextMenu(sidebarText('Note A'));
+    await userEvent.click(screen.getByText('パス変更'));
+
+    const input = screen.getByPlaceholderText('archive/note.md');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'archive/note-a.md');
+    await userEvent.keyboard('{Enter}');
+
+    await findSidebarText('archive');
+    await waitFor(() => {
+      expect(document.querySelector('.crumb')?.textContent).toContain('archive');
+      expect(document.querySelector('.crumb')?.textContent).toContain('note-a');
+    });
+    expect(await db.notes.get('note-a.md')).toBeUndefined();
+    expect(await db.notes.get('archive/note-a.md')).toBeDefined();
+  });
+
+  it('既存 path と衝突する場合は変更せずエラーを表示する', async () => {
+    await db.notes.bulkPut([NOTE_A, NOTE_B]);
+    render(<App />);
+
+    await screen.findByText('Content of note A.');
+    fireEvent.contextMenu(sidebarText('Note A'));
+    await userEvent.click(screen.getByText('パス変更'));
+
+    const input = screen.getByPlaceholderText('archive/note.md');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'note-b.md');
+    await userEvent.keyboard('{Enter}');
+
+    await screen.findByRole('alert');
+    expect(screen.getByText('「note-b.md」は既に存在します。')).not.toBeNull();
+    expect(await db.notes.get('note-a.md')).toBeDefined();
+    expect((await db.notes.get('note-b.md'))?.body).toBe(NOTE_B.body);
+  });
+
+  it('編集中の現在ノートを変更すると draft を新 path に保持する', async () => {
+    await db.notes.bulkPut([NOTE_A]);
+    render(<App />);
+
+    await screen.findByText('Content of note A.');
+    await userEvent.click(screen.getByTitle('編集 (E)'));
+    const textarea = screen.getByRole('textbox');
+    await userEvent.clear(textarea);
+    await userEvent.type(textarea, '# Note A\n\nDraft before rename.');
+
+    fireEvent.contextMenu(sidebarText('Note A'));
+    await userEvent.click(screen.getByText('パス変更'));
+
+    const input = screen.getByPlaceholderText('archive/note.md');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'draft-renamed.md');
+    await userEvent.keyboard('{Enter}');
+
+    await waitFor(async () => {
+      expect(await db.notes.get('note-a.md')).toBeUndefined();
+      expect((await db.notes.get('draft-renamed.md'))?.body).toBe(
+        '# Note A\n\nDraft before rename.'
+      );
+    });
+    await userEvent.click(screen.getByText(/保存/));
+    await screen.findByText('Draft before rename.');
+  });
+});

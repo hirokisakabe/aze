@@ -739,6 +739,11 @@ kbd {
   gap: 5px;
   flex-wrap: wrap;
 }
+.dialog-error {
+  margin-top: 12px;
+  font-size: 12px;
+  color: #c0392b;
+}
 
 /* ============================== vibes ============================== */
 /* quiet (default) is the base above. */
@@ -819,7 +824,9 @@ kbd {
   min-width: 120px;
 }
 .sb-ctx-item {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
   padding: 7px 12px;
   background: none;
