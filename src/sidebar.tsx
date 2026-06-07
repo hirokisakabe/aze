@@ -160,7 +160,17 @@ export function Sidebar({
         ))}
       </div>
       <div className="sb-foot">
-        <span>{count} notes</span>
+        <div className="sb-foot-notes">
+          <span>{count} notes</span>
+          <button
+            className="sb-export"
+            title="エクスポート"
+            onClick={onExport}
+            aria-label="エクスポート"
+          >
+            <Download width={14} height={14} aria-hidden="true" />
+          </button>
+        </div>
         <a
           className="sb-github"
           href="https://github.com/hirokisakabe/aze"
@@ -171,14 +181,6 @@ export function Sidebar({
           <ExternalLink width={12} height={12} aria-hidden="true" />
           <span>GitHub</span>
         </a>
-        <button
-          className="sb-export"
-          title="エクスポート"
-          onClick={onExport}
-          aria-label="エクスポート"
-        >
-          <Download width={14} height={14} aria-hidden="true" />
-        </button>
       </div>
 
       {ctxMenu && (
