@@ -79,6 +79,48 @@ test('エクスポートボタンで zip がダウンロードされる', async 
   );
 });
 
+test('アップロードした画像はリロード後も表示され、エクスポート zip に含まれる', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await createNote(page, 'image-note.md');
+
+  const fileChooserPromise = page.waitForEvent('filechooser');
+  await page.getByText('画像').click();
+  const fileChooser = await fileChooserPromise;
+  await fileChooser.setFiles({
+    name: 'diagram.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
+      0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1f,
+      0x15, 0xc4, 0x89, 0x00, 0x00, 0x00, 0x0a, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9c, 0x63, 0x00,
+      0x01, 0x00, 0x00, 0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00, 0x00, 0x00, 0x00, 0x49,
+      0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+    ]),
+  });
+
+  const textarea = page.getByRole('textbox');
+  await expect(textarea).toContainText(/!\[diagram\]\(aze-asset:/);
+  await page.locator('.bar-save').click();
+  await expect(page.getByRole('img', { name: 'diagram' })).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByRole('img', { name: 'diagram' })).toBeVisible();
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByLabel('エクスポート').click();
+  const download = await downloadPromise;
+  const path = await download.path();
+  expect(path).not.toBeNull();
+
+  const data = fs.readFileSync(path!);
+  const zip = await JSZip.loadAsync(data);
+  const exportedMarkdown = await zip.file('image-note.md')?.async('string');
+  expect(exportedMarkdown).toMatch(/!\[diagram\]\(assets\/.+-diagram\.png\)/);
+  expect(zip.file(/assets\/.+-diagram\.png/)).toHaveLength(1);
+});
+
 test('既存ノートのパスを変更してリロード後も新しいパスで復元される', async ({ page }) => {
   await page.goto('/');
   await createNote(page, 'rename-me.md');

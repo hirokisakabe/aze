@@ -1,11 +1,20 @@
 import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import type { CSSProperties } from 'react';
 import JSZip from 'jszip';
-import { buildTree, ancestorsOf } from './data';
+import { buildTree, ancestorsOf, type Note } from './data';
 import { db } from './db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { MarkdownPreview } from './markdown';
 import { Sidebar } from './sidebar';
+import {
+  assetMarkdownUrl,
+  createAssetId,
+  extractAssetIdsFromMarkdown,
+  exportedAssetPath,
+  readableAltText,
+  referencedImageAssets,
+  rewriteAssetUrlsForExport,
+} from './assets';
 import {
   useTweaks,
   TweaksPanel,
@@ -179,6 +188,22 @@ function parseNotePath(path: string): ParsedNotePath {
   return { path: nextPath, error: '' };
 }
 
+async function deleteUnreferencedImageAssets(notePath: string, body: string) {
+  const referencedIds = new Set(extractAssetIdsFromMarkdown(body));
+  const assets = await db.imageAssets.where('notePath').equals(notePath).toArray();
+  const staleIds = assets.filter((asset) => !referencedIds.has(asset.id)).map((asset) => asset.id);
+  if (staleIds.length > 0) {
+    await db.imageAssets.bulkDelete(staleIds);
+  }
+}
+
+async function persistNoteBody(note: Note, body: string) {
+  await db.transaction('rw', db.notes, db.imageAssets, async () => {
+    await db.notes.put({ ...note, body, updated: TODAY });
+    await deleteUnreferencedImageAssets(note.path, body);
+  });
+}
+
 interface NewNoteDialogProps {
   defaultPrefix: string;
   onCreate: (path: string) => void;
@@ -307,15 +332,20 @@ function RenameNoteDialog({ initialPath, onRename, onCancel }: RenameNoteDialogP
 export default function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const rawNotes = useLiveQuery(() => db.notes.toArray(), []);
+  const rawImageAssets = useLiveQuery(() => db.imageAssets.toArray(), []);
   const notes = useMemo(() => rawNotes ?? [], [rawNotes]);
+  const imageAssets = useMemo(() => rawImageAssets ?? [], [rawImageAssets]);
   const [currentPath, setCurrentPath] = useState('');
   const [mode, setMode] = useState<'view' | 'edit'>('view');
   const [draft, setDraft] = useState('');
+  const [assetError, setAssetError] = useState('');
+  const [isDroppingImage, setIsDroppingImage] = useState(false);
   const [creating, setCreating] = useState(false);
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(() => new Set<string>());
   const taRef = useRef<HTMLTextAreaElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const pendingSelectionRef = useRef<Pick<IndentResult, 'selectionStart' | 'selectionEnd'> | null>(
     null
   );
@@ -323,12 +353,28 @@ export default function App() {
 
   const tree = useMemo(() => buildTree(notes), [notes]);
   const current = useMemo(() => notes.find((n) => n.path === currentPath), [notes, currentPath]);
+  const assetUrls = useMemo(() => {
+    const next = new Map<string, string>();
+    for (const asset of imageAssets) {
+      next.set(asset.id, URL.createObjectURL(asset.blob));
+    }
+    return next;
+  }, [imageAssets]);
+  const resolveAssetUrl = useCallback((id: string) => assetUrls.get(id), [assetUrls]);
+
+  useEffect(() => {
+    return () => {
+      for (const url of assetUrls.values()) {
+        URL.revokeObjectURL(url);
+      }
+    };
+  }, [assetUrls]);
 
   const openNote = useCallback(
     async (path: string) => {
       if (mode === 'edit' && current && path !== currentPath && draft !== current.body) {
         try {
-          await db.notes.put({ ...current, body: draft, updated: TODAY });
+          await persistNoteBody(current, draft);
         } catch {
           return;
         }
@@ -376,7 +422,7 @@ export default function App() {
 
   const saveEdit = useCallback(async () => {
     if (!current) return;
-    await db.notes.put({ ...current, body: draft, updated: TODAY });
+    await persistNoteBody(current, draft);
     setMode('view');
   }, [draft, current]);
 
@@ -408,7 +454,74 @@ export default function App() {
     setDraft(next.value);
   }, []);
 
-  const cancelEdit = useCallback(() => setMode('view'), []);
+  const insertMarkdownAtCursor = useCallback((markdown: string) => {
+    const textarea = taRef.current;
+    setDraft((currentDraft) => {
+      const selectionStart = textarea?.selectionStart ?? currentDraft.length;
+      const selectionEnd = textarea?.selectionEnd ?? selectionStart;
+      const prefix = currentDraft.slice(0, selectionStart);
+      const suffix = currentDraft.slice(selectionEnd);
+      const needsLeadingBreak = prefix.length > 0 && !prefix.endsWith('\n') ? '\n' : '';
+      const needsTrailingBreak = suffix.length > 0 && !markdown.endsWith('\n') ? '\n' : '';
+      const insertion = `${needsLeadingBreak}${markdown}${needsTrailingBreak}`;
+      const cursor = prefix.length + insertion.length;
+      pendingSelectionRef.current = { selectionStart: cursor, selectionEnd: cursor };
+      return `${prefix}${insertion}${suffix}`;
+    });
+  }, []);
+
+  const uploadImageFiles = useCallback(
+    async (files: FileList | File[]) => {
+      if (!current) return;
+
+      const allFiles = Array.from(files);
+      const imageFiles = allFiles.filter((file) => file.type.startsWith('image/'));
+      if (imageFiles.length === 0) {
+        if (allFiles.length > 0) {
+          setAssetError('画像ファイルのみ追加できます。');
+        }
+        return;
+      }
+
+      setAssetError('');
+      try {
+        const created = new Intl.DateTimeFormat('sv-SE').format(new Date());
+        const assets = imageFiles.map((file) => {
+          const id = createAssetId();
+          return {
+            id,
+            notePath: current.path,
+            filename: file.name || 'image',
+            mimeType: file.type,
+            blob: file,
+            created,
+            markdown: `![${readableAltText(file.name)}](${assetMarkdownUrl(id)})`,
+          };
+        });
+        await db.transaction('rw', db.imageAssets, async () => {
+          await db.imageAssets.bulkAdd(
+            assets.map(({ markdown, ...asset }) => {
+              void markdown;
+              return asset;
+            })
+          );
+        });
+        const markdownLines = assets.map((asset) => asset.markdown);
+        insertMarkdownAtCursor(markdownLines.join('\n'));
+      } catch {
+        setAssetError('画像を保存できませんでした。本文は変更していません。');
+      }
+    },
+    [current, insertMarkdownAtCursor]
+  );
+
+  const cancelEdit = useCallback(async () => {
+    if (current) {
+      await deleteUnreferencedImageAssets(current.path, current.body);
+    }
+    setAssetError('');
+    setMode('view');
+  }, [current]);
 
   const createNote = useCallback(
     async (path: string) => {
@@ -431,7 +544,10 @@ export default function App() {
 
   const deleteNote = useCallback(
     async (path: string) => {
-      await db.notes.delete(path);
+      await db.transaction('rw', db.notes, db.imageAssets, async () => {
+        await db.notes.delete(path);
+        await db.imageAssets.where('notePath').equals(path).delete();
+      });
       if (currentPath === path) {
         const remaining = notes.filter((n) => n.path !== path);
         if (remaining.length > 0) {
@@ -456,9 +572,10 @@ export default function App() {
 
       const renamed = { ...note, path: newPath };
 
-      await db.transaction('rw', db.notes, db.settings, async () => {
+      await db.transaction('rw', db.notes, db.settings, db.imageAssets, async () => {
         await db.notes.put(renamed);
         await db.notes.delete(oldPath);
+        await db.imageAssets.where('notePath').equals(oldPath).modify({ notePath: newPath });
         if (oldPath === currentPath) {
           await db.settings.put({ key: 'lastOpenedPath', value: newPath });
         }
@@ -477,8 +594,16 @@ export default function App() {
     const today = new Intl.DateTimeFormat('sv-SE').format(new Date());
     const zip = new JSZip();
     const all = await db.notes.toArray();
+    const allAssets = await db.imageAssets.toArray();
+    const referencedAssets = referencedImageAssets(
+      all.map((note) => note.body),
+      allAssets
+    );
     for (const note of all) {
-      zip.file(note.path, note.body);
+      zip.file(note.path, rewriteAssetUrlsForExport(note.body, referencedAssets));
+    }
+    for (const asset of referencedAssets) {
+      zip.file(exportedAssetPath(asset), asset.blob);
     }
     const blob = await zip.generateAsync({ type: 'blob' });
     const url = URL.createObjectURL(blob);
@@ -579,7 +704,9 @@ export default function App() {
                   <div className="meta-rule" />
                 </div>
                 <article className="doc">
-                  {current && <MarkdownPreview content={current.body} />}
+                  {current && (
+                    <MarkdownPreview content={current.body} resolveAssetUrl={resolveAssetUrl} />
+                  )}
                 </article>
               </div>
               <button className="edit-fab" onClick={enterEdit} title="編集 (E)">
@@ -591,6 +718,7 @@ export default function App() {
               <div className="editor-inner">
                 <Breadcrumb path={current.path} />
                 <div className="editor-area-wrap">
+                  {isDroppingImage && <div className="editor-drop-hint">画像を追加</div>}
                   <div ref={overlayRef} className="editor-ws-overlay" aria-hidden="true">
                     {renderWsOverlay(draft)}
                   </div>
@@ -600,6 +728,39 @@ export default function App() {
                     value={draft}
                     spellCheck={false}
                     onChange={(e) => setDraft(e.target.value)}
+                    onPaste={(e) => {
+                      const files = e.clipboardData.files;
+                      if (Array.from(files).some((file) => file.type.startsWith('image/'))) {
+                        e.preventDefault();
+                        uploadImageFiles(files);
+                      }
+                    }}
+                    onDragEnter={(e) => {
+                      if (
+                        Array.from(e.dataTransfer.items).some((item) =>
+                          item.type.startsWith('image/')
+                        )
+                      ) {
+                        setIsDroppingImage(true);
+                      }
+                    }}
+                    onDragOver={(e) => {
+                      if (
+                        Array.from(e.dataTransfer.items).some((item) =>
+                          item.type.startsWith('image/')
+                        )
+                      ) {
+                        e.preventDefault();
+                        setIsDroppingImage(true);
+                      }
+                    }}
+                    onDragLeave={() => setIsDroppingImage(false)}
+                    onDrop={(e) => {
+                      setIsDroppingImage(false);
+                      if (e.dataTransfer.files.length === 0) return;
+                      e.preventDefault();
+                      uploadImageFiles(e.dataTransfer.files);
+                    }}
                     onKeyDown={(e) => {
                       if (e.key !== 'Tab') return;
                       e.preventDefault();
@@ -610,6 +771,29 @@ export default function App() {
               </div>
               <div className="editor-bar">
                 <span className="bar-mode">編集中</span>
+                <input
+                  ref={imageInputRef}
+                  className="image-input"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => {
+                    if (e.target.files) uploadImageFiles(e.target.files);
+                    e.target.value = '';
+                  }}
+                />
+                <button
+                  className="bar-tool"
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                >
+                  画像
+                </button>
+                {assetError && (
+                  <span className="bar-error" role="alert">
+                    {assetError}
+                  </span>
+                )}
                 <span className="bar-spacer" />
                 <span className="bar-hint">
                   <kbd>esc</kbd> 取消
