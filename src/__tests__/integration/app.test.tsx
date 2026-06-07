@@ -22,6 +22,7 @@ const NOTE_B: Note = {
 beforeEach(async () => {
   await db.notes.clear();
   await db.settings.clear();
+  await db.imageAssets.clear();
 });
 
 function sidebarText(text: string) {
@@ -196,6 +197,61 @@ describe('編集 textarea で Tab インデントを操作できる', () => {
     });
     expect(textarea.selectionStart).toBe(1);
     expect(textarea.selectionEnd).toBe(10);
+  });
+});
+
+describe('編集モードで画像をアップロードできる', () => {
+  async function openEditor(body = '# Note A\n\nHello') {
+    await db.notes.put({ ...NOTE_A, body });
+    render(<App />);
+
+    await findSidebarText('Note A');
+    await userEvent.click(sidebarText('Note A'));
+    await userEvent.click(screen.getByTitle('編集 (E)'));
+
+    return screen.getByRole('textbox') as HTMLTextAreaElement;
+  }
+
+  it('選択した画像を保存し、カーソル位置へ Markdown 画像記法を挿入してプレビュー表示する', async () => {
+    const textarea = await openEditor();
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+
+    const input = document.querySelector('.image-input') as HTMLInputElement;
+    const file = new File(['image-bytes'], 'screen-shot.png', { type: 'image/png' });
+    await userEvent.upload(input, file);
+
+    await waitFor(() => {
+      expect(textarea.value).toMatch(/!\[screen shot\]\(aze-asset:[^)]+\)/);
+    });
+
+    const assets = await db.imageAssets.toArray();
+    expect(assets).toHaveLength(1);
+    expect(assets[0].filename).toBe('screen-shot.png');
+    expect(assets[0].mimeType).toBe('image/png');
+
+    await userEvent.click(screen.getByText(/保存/));
+
+    const img = await screen.findByRole('img', { name: 'screen shot' });
+    expect(img.className).toContain('md-img');
+    await waitFor(() => {
+      expect(img.getAttribute('src')).toBe('blob:mock-url');
+    });
+    expect(img.getAttribute('data-asset-id')).toBe(assets[0].id);
+  });
+
+  it('非画像ファイルは本文を変更せずエラーを表示する', async () => {
+    const textarea = await openEditor();
+    const before = textarea.value;
+
+    const input = document.querySelector('.image-input') as HTMLInputElement;
+    const file = new File(['plain'], 'memo.txt', { type: 'text/plain' });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      '画像ファイルのみ追加できます。'
+    );
+    expect(textarea.value).toBe(before);
+    expect(await db.imageAssets.count()).toBe(0);
   });
 });
 

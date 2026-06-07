@@ -7,6 +7,13 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { MarkdownPreview } from './markdown';
 import { Sidebar } from './sidebar';
 import {
+  assetMarkdownUrl,
+  createAssetId,
+  exportedAssetPath,
+  readableAltText,
+  rewriteAssetUrlsForExport,
+} from './assets';
+import {
   useTweaks,
   TweaksPanel,
   TweakSection,
@@ -307,15 +314,20 @@ function RenameNoteDialog({ initialPath, onRename, onCancel }: RenameNoteDialogP
 export default function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const rawNotes = useLiveQuery(() => db.notes.toArray(), []);
+  const rawImageAssets = useLiveQuery(() => db.imageAssets.toArray(), []);
   const notes = useMemo(() => rawNotes ?? [], [rawNotes]);
+  const imageAssets = useMemo(() => rawImageAssets ?? [], [rawImageAssets]);
   const [currentPath, setCurrentPath] = useState('');
   const [mode, setMode] = useState<'view' | 'edit'>('view');
   const [draft, setDraft] = useState('');
+  const [assetError, setAssetError] = useState('');
+  const [isDroppingImage, setIsDroppingImage] = useState(false);
   const [creating, setCreating] = useState(false);
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(() => new Set<string>());
   const taRef = useRef<HTMLTextAreaElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const pendingSelectionRef = useRef<Pick<IndentResult, 'selectionStart' | 'selectionEnd'> | null>(
     null
   );
@@ -323,6 +335,22 @@ export default function App() {
 
   const tree = useMemo(() => buildTree(notes), [notes]);
   const current = useMemo(() => notes.find((n) => n.path === currentPath), [notes, currentPath]);
+  const assetUrls = useMemo(() => {
+    const next = new Map<string, string>();
+    for (const asset of imageAssets) {
+      next.set(asset.id, URL.createObjectURL(asset.blob));
+    }
+    return next;
+  }, [imageAssets]);
+  const resolveAssetUrl = useCallback((id: string) => assetUrls.get(id), [assetUrls]);
+
+  useEffect(() => {
+    return () => {
+      for (const url of assetUrls.values()) {
+        URL.revokeObjectURL(url);
+      }
+    };
+  }, [assetUrls]);
 
   const openNote = useCallback(
     async (path: string) => {
@@ -408,6 +436,59 @@ export default function App() {
     setDraft(next.value);
   }, []);
 
+  const insertMarkdownAtCursor = useCallback((markdown: string) => {
+    const textarea = taRef.current;
+    setDraft((currentDraft) => {
+      const selectionStart = textarea?.selectionStart ?? currentDraft.length;
+      const selectionEnd = textarea?.selectionEnd ?? selectionStart;
+      const prefix = currentDraft.slice(0, selectionStart);
+      const suffix = currentDraft.slice(selectionEnd);
+      const needsLeadingBreak = prefix.length > 0 && !prefix.endsWith('\n') ? '\n' : '';
+      const needsTrailingBreak = suffix.length > 0 && !markdown.endsWith('\n') ? '\n' : '';
+      const insertion = `${needsLeadingBreak}${markdown}${needsTrailingBreak}`;
+      const cursor = prefix.length + insertion.length;
+      pendingSelectionRef.current = { selectionStart: cursor, selectionEnd: cursor };
+      return `${prefix}${insertion}${suffix}`;
+    });
+  }, []);
+
+  const uploadImageFiles = useCallback(
+    async (files: FileList | File[]) => {
+      if (!current) return;
+
+      const allFiles = Array.from(files);
+      const imageFiles = allFiles.filter((file) => file.type.startsWith('image/'));
+      if (imageFiles.length === 0) {
+        if (allFiles.length > 0) {
+          setAssetError('画像ファイルのみ追加できます。');
+        }
+        return;
+      }
+
+      setAssetError('');
+      try {
+        const created = new Intl.DateTimeFormat('sv-SE').format(new Date());
+        const markdownLines: string[] = [];
+        for (const file of imageFiles) {
+          const id = createAssetId();
+          await db.imageAssets.add({
+            id,
+            notePath: current.path,
+            filename: file.name || 'image',
+            mimeType: file.type,
+            blob: file,
+            created,
+          });
+          markdownLines.push(`![${readableAltText(file.name)}](${assetMarkdownUrl(id)})`);
+        }
+        insertMarkdownAtCursor(markdownLines.join('\n'));
+      } catch {
+        setAssetError('画像を保存できませんでした。本文は変更していません。');
+      }
+    },
+    [current, insertMarkdownAtCursor]
+  );
+
   const cancelEdit = useCallback(() => setMode('view'), []);
 
   const createNote = useCallback(
@@ -477,8 +558,12 @@ export default function App() {
     const today = new Intl.DateTimeFormat('sv-SE').format(new Date());
     const zip = new JSZip();
     const all = await db.notes.toArray();
+    const allAssets = await db.imageAssets.toArray();
     for (const note of all) {
-      zip.file(note.path, note.body);
+      zip.file(note.path, rewriteAssetUrlsForExport(note.body, allAssets));
+    }
+    for (const asset of allAssets) {
+      zip.file(exportedAssetPath(asset), asset.blob);
     }
     const blob = await zip.generateAsync({ type: 'blob' });
     const url = URL.createObjectURL(blob);
@@ -579,7 +664,9 @@ export default function App() {
                   <div className="meta-rule" />
                 </div>
                 <article className="doc">
-                  {current && <MarkdownPreview content={current.body} />}
+                  {current && (
+                    <MarkdownPreview content={current.body} resolveAssetUrl={resolveAssetUrl} />
+                  )}
                 </article>
               </div>
               <button className="edit-fab" onClick={enterEdit} title="編集 (E)">
@@ -591,6 +678,7 @@ export default function App() {
               <div className="editor-inner">
                 <Breadcrumb path={current.path} />
                 <div className="editor-area-wrap">
+                  {isDroppingImage && <div className="editor-drop-hint">画像を追加</div>}
                   <div ref={overlayRef} className="editor-ws-overlay" aria-hidden="true">
                     {renderWsOverlay(draft)}
                   </div>
@@ -600,6 +688,39 @@ export default function App() {
                     value={draft}
                     spellCheck={false}
                     onChange={(e) => setDraft(e.target.value)}
+                    onPaste={(e) => {
+                      const files = e.clipboardData.files;
+                      if (Array.from(files).some((file) => file.type.startsWith('image/'))) {
+                        e.preventDefault();
+                        uploadImageFiles(files);
+                      }
+                    }}
+                    onDragEnter={(e) => {
+                      if (
+                        Array.from(e.dataTransfer.items).some((item) =>
+                          item.type.startsWith('image/')
+                        )
+                      ) {
+                        setIsDroppingImage(true);
+                      }
+                    }}
+                    onDragOver={(e) => {
+                      if (
+                        Array.from(e.dataTransfer.items).some((item) =>
+                          item.type.startsWith('image/')
+                        )
+                      ) {
+                        e.preventDefault();
+                        setIsDroppingImage(true);
+                      }
+                    }}
+                    onDragLeave={() => setIsDroppingImage(false)}
+                    onDrop={(e) => {
+                      setIsDroppingImage(false);
+                      if (e.dataTransfer.files.length === 0) return;
+                      e.preventDefault();
+                      uploadImageFiles(e.dataTransfer.files);
+                    }}
                     onKeyDown={(e) => {
                       if (e.key !== 'Tab') return;
                       e.preventDefault();
@@ -610,6 +731,29 @@ export default function App() {
               </div>
               <div className="editor-bar">
                 <span className="bar-mode">編集中</span>
+                <input
+                  ref={imageInputRef}
+                  className="image-input"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => {
+                    if (e.target.files) uploadImageFiles(e.target.files);
+                    e.target.value = '';
+                  }}
+                />
+                <button
+                  className="bar-tool"
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                >
+                  画像
+                </button>
+                {assetError && (
+                  <span className="bar-error" role="alert">
+                    {assetError}
+                  </span>
+                )}
                 <span className="bar-spacer" />
                 <span className="bar-hint">
                   <kbd>esc</kbd> 取消
