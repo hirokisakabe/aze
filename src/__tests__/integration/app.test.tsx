@@ -71,6 +71,22 @@ describe('Tweaks UI は存在しない', () => {
   });
 });
 
+describe('サイドバー下部のリンク', () => {
+  it('GitHub リポジトリへの外部リンクを表示する', async () => {
+    await db.notes.bulkPut([NOTE_A]);
+    render(<App />);
+
+    await findSidebarText('Note A');
+    const link = within(document.querySelector('.sidebar') as HTMLElement).getByRole('link', {
+      name: 'GitHub repository',
+    });
+
+    expect(link.getAttribute('href')).toBe('https://github.com/hirokisakabe/aze');
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.getAttribute('rel')).toBe('noreferrer');
+  });
+});
+
 describe('編集モード → 保存 → 閲覧モードに戻る', () => {
   it('保存ボタンで変更が保存されて閲覧モードに戻る', async () => {
     await db.notes.bulkPut([NOTE_A]);

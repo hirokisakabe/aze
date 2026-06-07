@@ -117,13 +117,33 @@ body {
 .sb-foot {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   padding: 10px 18px 14px;
   font-family: var(--mono);
   font-size: 10.5px;
   letter-spacing: 0.06em;
   color: var(--ink-faint);
   border-top: 1px solid var(--line-soft);
+}
+.sb-foot > span {
+  min-width: 0;
+  flex: 1;
+}
+.sb-github {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  color: var(--ink-faint);
+  text-decoration: none;
+  transition: color 0.12s ease;
+}
+.sb-github span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sb-github:hover {
+  color: var(--ink-soft);
 }
 
 .sb-row {

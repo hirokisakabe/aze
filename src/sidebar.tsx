@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { ChevronRight, Plus, Download, Pencil } from 'lucide-react';
+import { ChevronRight, Plus, Download, ExternalLink, Pencil } from 'lucide-react';
 import type { TreeNode as TreeNodeData } from './data';
 
 interface TreeNodeProps {
@@ -161,6 +161,16 @@ export function Sidebar({
       </div>
       <div className="sb-foot">
         <span>{count} notes</span>
+        <a
+          className="sb-github"
+          href="https://github.com/hirokisakabe/aze"
+          target="_blank"
+          rel="noreferrer"
+          aria-label="GitHub repository"
+        >
+          <ExternalLink width={12} height={12} aria-hidden="true" />
+          <span>GitHub</span>
+        </a>
         <button
           className="sb-export"
           title="エクスポート"
