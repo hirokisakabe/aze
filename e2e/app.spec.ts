@@ -78,3 +78,28 @@ test('エクスポートボタンで zip がダウンロードされる', async 
     '# Daily Note\n\nNested export.'
   );
 });
+
+test('既存ノートのパスを変更してリロード後も新しいパスで復元される', async ({ page }) => {
+  await page.goto('/');
+  await createNote(page, 'rename-me.md');
+  await page.getByRole('textbox').fill('# Rename Me\n\nKeep this body.');
+  await page.locator('.bar-save').click();
+
+  const noteRow = page.locator('.sb-file', { hasText: 'Rename Me' });
+  await expect(noteRow).toBeVisible();
+  await noteRow.click({ button: 'right' });
+  await page.getByText('パス変更').click();
+  await page.getByPlaceholder('archive/note.md').fill('archive/renamed.md');
+  await page.keyboard.press('Enter');
+
+  await expect(page.locator('.crumb')).toContainText('archive');
+  await expect(page.locator('.crumb')).toContainText('renamed');
+  await expect(page.locator('.sb-folder', { hasText: 'archive' })).toBeVisible();
+  await expect(page.getByText('Keep this body.')).toBeVisible();
+
+  await page.reload();
+
+  await expect(page.locator('.crumb')).toContainText('archive');
+  await expect(page.locator('.crumb')).toContainText('renamed');
+  await expect(page.getByText('Keep this body.')).toBeVisible();
+});

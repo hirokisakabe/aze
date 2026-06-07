@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { ChevronRight, Plus, Download } from 'lucide-react';
+import { ChevronRight, Plus, Download, Pencil } from 'lucide-react';
 import type { TreeNode as TreeNodeData } from './data';
 
 interface TreeNodeProps {
@@ -97,6 +97,7 @@ interface SidebarProps {
   onNew: () => void;
   onExport: () => void;
   onDelete: (path: string) => void;
+  onRename: (path: string) => void;
   variant: string;
   count: number;
 }
@@ -110,6 +111,7 @@ export function Sidebar({
   onNew,
   onExport,
   onDelete,
+  onRename,
   variant,
   count,
 }: SidebarProps) {
@@ -150,6 +152,13 @@ export function Sidebar({
     }
   };
 
+  const handleRename = () => {
+    if (!ctxMenu) return;
+    const { path } = ctxMenu;
+    setCtxMenu(null);
+    onRename(path);
+  };
+
   return (
     <aside className={'sidebar sb-variant-' + variant}>
       <div className="sb-brand">
@@ -188,6 +197,10 @@ export function Sidebar({
 
       {ctxMenu && (
         <div ref={ctxRef} className="sb-ctx-menu" style={{ left: ctxMenu.x, top: ctxMenu.y }}>
+          <button className="sb-ctx-item" onClick={handleRename}>
+            <Pencil width={13} height={13} aria-hidden="true" />
+            パス変更
+          </button>
           <button className="sb-ctx-item sb-ctx-delete" onClick={handleDelete}>
             削除
           </button>

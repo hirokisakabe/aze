@@ -160,6 +160,25 @@ function getParentFolder(path: string): string {
   return lastSlash === -1 ? '' : path.slice(0, lastSlash + 1);
 }
 
+interface ParsedNotePath {
+  path: string;
+  error: string;
+}
+
+function parseNotePath(path: string): ParsedNotePath {
+  let nextPath = path.trim();
+  if (!nextPath) return { path: '', error: '' };
+  nextPath = nextPath.replace(/^\/+/, '').replace(/\/+/g, '/');
+  if (!nextPath || nextPath.endsWith('/')) {
+    return { path: '', error: 'ファイル名を含むパスを入力してください。' };
+  }
+  if (nextPath.split('/').some((part) => part === '.' || part === '..')) {
+    return { path: '', error: '「.」または「..」を含むパスは使えません。' };
+  }
+  if (!nextPath.endsWith('.md')) nextPath += '.md';
+  return { path: nextPath, error: '' };
+}
+
 interface NewNoteDialogProps {
   defaultPrefix: string;
   onCreate: (path: string) => void;
@@ -168,15 +187,19 @@ interface NewNoteDialogProps {
 
 function NewNoteDialog({ defaultPrefix, onCreate, onCancel }: NewNoteDialogProps) {
   const [val, setVal] = useState(defaultPrefix);
+  const [error, setError] = useState('');
   const ref = useRef<HTMLInputElement>(null);
   useEffect(() => {
     ref.current?.focus();
   }, []);
   const submit = () => {
-    let p = val.trim();
-    if (!p) return;
-    if (!p.endsWith('.md')) p += '.md';
-    onCreate(p);
+    const result = parseNotePath(val);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    if (!result.path) return;
+    onCreate(result.path);
   };
   return (
     <div className="dialog-scrim" onClick={onCancel}>
@@ -190,16 +213,92 @@ function NewNoteDialog({ defaultPrefix, onCreate, onCancel }: NewNoteDialogProps
             value={val}
             placeholder="ideas/new-idea.md"
             spellCheck={false}
-            onChange={(e) => setVal(e.target.value)}
+            onChange={(e) => {
+              setVal(e.target.value);
+              setError('');
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.nativeEvent.isComposing) submit();
               if (e.key === 'Escape') onCancel();
             }}
           />
         </div>
-        <div className="dialog-hint">
-          パスを入力 → <kbd>Enter</kbd> で作成。フォルダは自動で作られます。
+        {error ? (
+          <div className="dialog-error" role="alert">
+            {error}
+          </div>
+        ) : (
+          <div className="dialog-hint">
+            パスを入力 → <kbd>Enter</kbd> で作成。フォルダは自動で作られます。
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface RenameNoteDialogProps {
+  initialPath: string;
+  onRename: (path: string) => Promise<string | null>;
+  onCancel: () => void;
+}
+
+function RenameNoteDialog({ initialPath, onRename, onCancel }: RenameNoteDialogProps) {
+  const [val, setVal] = useState(initialPath);
+  const [error, setError] = useState('');
+  const ref = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    ref.current?.focus();
+    ref.current?.select();
+  }, []);
+
+  const submit = async () => {
+    const result = parseNotePath(val);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    if (!result.path) return;
+    const message = await onRename(result.path);
+    if (message) {
+      setError(message);
+      return;
+    }
+    onCancel();
+  };
+
+  return (
+    <div className="dialog-scrim" onClick={onCancel}>
+      <div className="dialog" onClick={(e) => e.stopPropagation()}>
+        <div className="dialog-label">パス変更</div>
+        <div className="dialog-row">
+          <span className="dialog-prefix">~/notes/</span>
+          <input
+            ref={ref}
+            className="dialog-input"
+            value={val}
+            placeholder="archive/note.md"
+            spellCheck={false}
+            onChange={(e) => {
+              setVal(e.target.value);
+              setError('');
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.nativeEvent.isComposing) submit();
+              if (e.key === 'Escape') onCancel();
+            }}
+          />
         </div>
+        {error ? (
+          <div className="dialog-error" role="alert">
+            {error}
+          </div>
+        ) : (
+          <div className="dialog-hint">
+            ファイル名またはフォルダを含むパスを入力 → <kbd>Enter</kbd> で変更。
+          </div>
+        )}
       </div>
     </div>
   );
@@ -213,6 +312,7 @@ export default function App() {
   const [mode, setMode] = useState<'view' | 'edit'>('view');
   const [draft, setDraft] = useState('');
   const [creating, setCreating] = useState(false);
+  const [renamingPath, setRenamingPath] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(() => new Set<string>());
   const taRef = useRef<HTMLTextAreaElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -346,6 +446,33 @@ export default function App() {
     [currentPath, notes]
   );
 
+  const renameNote = useCallback(
+    async (oldPath: string, newPath: string) => {
+      if (oldPath === newPath) return null;
+      const note = notes.find((n) => n.path === oldPath);
+      if (!note) return '変更対象のノートが見つかりません。';
+      const exists = await db.notes.get(newPath);
+      if (exists) return `「${newPath}」は既に存在します。`;
+
+      const renamed = { ...note, path: newPath };
+
+      await db.transaction('rw', db.notes, db.settings, async () => {
+        await db.notes.put(renamed);
+        await db.notes.delete(oldPath);
+        if (oldPath === currentPath) {
+          await db.settings.put({ key: 'lastOpenedPath', value: newPath });
+        }
+      });
+
+      if (oldPath === currentPath) {
+        setCurrentPath(newPath);
+        setExpanded(new Set(ancestorsOf(newPath)));
+      }
+      return null;
+    },
+    [currentPath, notes]
+  );
+
   const exportNotes = useCallback(async () => {
     const today = new Intl.DateTimeFormat('sv-SE').format(new Date());
     const zip = new JSZip();
@@ -432,6 +559,7 @@ export default function App() {
         onNew={() => setCreating(true)}
         onExport={exportNotes}
         onDelete={deleteNote}
+        onRename={setRenamingPath}
         variant={t.sidebar}
         count={notes.length}
       />
@@ -502,6 +630,14 @@ export default function App() {
           defaultPrefix={getParentFolder(currentPath)}
           onCreate={createNote}
           onCancel={() => setCreating(false)}
+        />
+      )}
+
+      {renamingPath && (
+        <RenameNoteDialog
+          initialPath={renamingPath}
+          onRename={(newPath) => renameNote(renamingPath, newPath)}
+          onCancel={() => setRenamingPath(null)}
         />
       )}
 
