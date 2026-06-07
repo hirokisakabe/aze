@@ -1,23 +1,23 @@
 /* ============================== tokens ============================== */
 :root {
-  --ink: #23211e;
-  --ink-soft: #6f6b63;
-  --ink-faint: #a9a59c;
-  --line: #e8e4dc;
-  --line-soft: #f0ede6;
-  --bg: #fcfbf8;
-  --panel: #f6f4ef;
-  --gutter: #efece5;
-  --hover: #ece8e0;
+  --ink: #1f2024;
+  --ink-soft: #62656d;
+  --ink-faint: #a4a7af;
+  --line: #e4e6ea;
+  --line-soft: #eef0f3;
+  --bg: #fcfcfd;
+  --panel: #f3f4f6;
+  --gutter: #e8eaee;
+  --hover: #e9ebef;
   --accent: #5b6b86;
 
   --sans: 'Zen Kaku Gothic New', system-ui, sans-serif;
   --mono: 'DM Mono', 'Zen Kaku Gothic New', ui-monospace, monospace;
 
-  --measure: 660px;
+  --measure: 1200px;
   --body-size: 17px;
-  --row-h: 30px;
-  --row-fs: 13.5px;
+  --row-h: 24px;
+  --row-fs: 12.5px;
 }
 
 * {
@@ -167,13 +167,8 @@ body {
 .sb-chevron.is-open {
   transform: rotate(90deg);
 }
-.sb-filemark {
-  color: var(--ink-faint);
-  font-size: 13px;
-  opacity: 0.55;
-}
 .sb-children {
-  margin-left: 13px;
+  margin-left: 11px;
   padding-left: 0;
 }
 
@@ -184,47 +179,6 @@ body {
 }
 .sb-file.is-active .sb-name {
   color: var(--ink);
-}
-
-/* variant: guides — vertical indent lines */
-.sb-variant-guides .sb-children {
-  margin-left: 13px;
-  padding-left: 9px;
-  border-left: 1px solid var(--line);
-}
-.sb-variant-guides .sb-file.is-active {
-  border-radius: 0 6px 6px 0;
-  box-shadow: inset 2px 0 0 var(--accent);
-}
-
-/* variant: markers — files get a leading chevron-ish mark, active gets a bar */
-.sb-variant-markers .sb-file.is-active {
-  box-shadow: inset 2px 0 0 var(--accent);
-  border-radius: 0 6px 6px 0;
-}
-.sb-variant-markers .sb-file.is-active .sb-filemark {
-  color: var(--accent);
-  opacity: 1;
-}
-
-/* variant: minimal — no chevrons, quiet outline */
-.sb-variant-minimal .sb-folder .sb-name {
-  font-weight: 700;
-  font-size: 12px;
-  letter-spacing: 0.02em;
-  color: var(--ink-soft);
-}
-.sb-variant-minimal .sb-file.is-active {
-  background: var(--hover);
-}
-
-/* variant: compact — denser */
-.sb-variant-compact {
-  --row-h: 24px;
-  --row-fs: 12.5px;
-}
-.sb-variant-compact .sb-children {
-  margin-left: 11px;
 }
 
 /* ============================== main =============================== */
@@ -260,7 +214,7 @@ body {
   position: relative;
 }
 .reader-inner {
-  padding: 60px 72px 132px;
+  padding: 56px 72px 132px;
 }
 .editor {
   display: flex;
@@ -269,10 +223,10 @@ body {
 }
 .crumb {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 12.5px;
   letter-spacing: 0.02em;
-  color: var(--ink-faint);
-  margin-bottom: 40px;
+  color: var(--ink-soft);
+  margin-bottom: 30px;
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -294,7 +248,7 @@ body {
 /* markdown document */
 .doc {
   font-size: calc(var(--body-size) * 0.8);
-  line-height: 1.56;
+  line-height: 1.6;
   color: var(--ink);
 }
 .doc > *:first-child {
@@ -323,12 +277,13 @@ body {
   content: '####';
 }
 .md-h1 {
-  font-size: 1.92em;
+  font-size: 1.6em;
   margin: 0 0 0.62em;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.005em;
+  font-weight: 700;
 }
 .md-h2 {
-  font-size: 1.32em;
+  font-size: 1.18em;
   margin: 1.35em 0 0.48em;
   padding-bottom: 0.18em;
   border-bottom: 1px solid var(--line);
@@ -785,73 +740,6 @@ kbd {
   margin-top: 12px;
   font-size: 12px;
   color: #c0392b;
-}
-
-/* ============================== vibes ============================== */
-/* quiet (default) is the base above. */
-
-/* editor — cooler greys, tighter, monospace-forward, firmer chrome */
-.vibe-editor {
-  --ink: #1f2024;
-  --ink-soft: #62656d;
-  --ink-faint: #a4a7af;
-  --line: #e4e6ea;
-  --line-soft: #eef0f3;
-  --bg: #fcfcfd;
-  --panel: #f3f4f6;
-  --gutter: #e8eaee;
-  --hover: #e9ebef;
-}
-.vibe-editor .doc {
-  line-height: 1.6;
-}
-.vibe-editor .md-h1 {
-  font-size: 1.6em;
-  font-weight: 700;
-  letter-spacing: -0.005em;
-}
-.vibe-editor .md-h2 {
-  font-size: 1.18em;
-}
-.vibe-editor .crumb {
-  margin-bottom: 30px;
-  font-size: 12.5px;
-  color: var(--ink-soft);
-}
-.vibe-editor .reader-inner,
-.vibe-editor .editor-inner {
-  padding-top: 56px;
-}
-
-/* editorial — generous, higher contrast, reading-first */
-.vibe-editorial {
-  --ink: #1a1815;
-  --ink-soft: #6a655c;
-  --ink-faint: #b0aaa0;
-  --line: #e9e5dd;
-  --bg: #fefdfb;
-  --panel: #f5f2ec;
-  --gutter: #efeae1;
-}
-.vibe-editorial .reader-inner {
-  padding-top: 88px;
-}
-.vibe-editorial .doc {
-  line-height: 1.72;
-}
-.vibe-editorial .md-h1 {
-  font-size: 2.5em;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-  margin-bottom: 0.7em;
-}
-.vibe-editorial .md-h2 {
-  font-size: 1.45em;
-  margin-top: 1.65em;
-}
-.vibe-editorial .crumb {
-  margin-bottom: 52px;
 }
 
 /* context menu */

@@ -9,22 +9,12 @@ interface TreeNodeProps {
   onToggle: (path: string) => void;
   onOpen: (path: string) => void;
   onContextMenu: (e: React.MouseEvent, path: string) => void;
-  variant: string;
 }
 
-function TreeNode({
-  node,
-  expanded,
-  currentPath,
-  onToggle,
-  onOpen,
-  onContextMenu,
-  variant,
-}: TreeNodeProps) {
+function TreeNode({ node, expanded, currentPath, onToggle, onOpen, onContextMenu }: TreeNodeProps) {
   const isFolder = node.type === 'folder';
   const open = expanded.has(node.path);
   const active = node.path === currentPath;
-  const showChevron = variant !== 'minimal';
 
   if (isFolder) {
     return (
@@ -33,18 +23,14 @@ function TreeNode({
           className={'sb-row sb-folder' + (open ? ' is-open' : '')}
           onClick={() => onToggle(node.path)}
         >
-          {showChevron ? (
-            <span className="sb-twirl">
-              <ChevronRight
-                className={'sb-chevron' + (open ? ' is-open' : '')}
-                width={9}
-                height={9}
-                aria-hidden="true"
-              />
-            </span>
-          ) : (
-            <span className="sb-twirl sb-twirl-empty" aria-hidden="true" />
-          )}
+          <span className="sb-twirl">
+            <ChevronRight
+              className={'sb-chevron' + (open ? ' is-open' : '')}
+              width={9}
+              height={9}
+              aria-hidden="true"
+            />
+          </span>
           <span className="sb-name">{node.name}</span>
         </div>
         {open && (
@@ -58,7 +44,6 @@ function TreeNode({
                 onToggle={onToggle}
                 onOpen={onOpen}
                 onContextMenu={onContextMenu}
-                variant={variant}
               />
             ))}
           </div>
@@ -76,13 +61,7 @@ function TreeNode({
         onContextMenu(e, node.path);
       }}
     >
-      {variant === 'markers' ? (
-        <span className="sb-twirl sb-filemark" aria-hidden="true">
-          ›
-        </span>
-      ) : (
-        <span className="sb-twirl sb-twirl-empty" aria-hidden="true" />
-      )}
+      <span className="sb-twirl sb-twirl-empty" aria-hidden="true" />
       <span className="sb-name">{node.title ?? node.name.replace(/\.md$/, '')}</span>
     </div>
   );
@@ -98,7 +77,6 @@ interface SidebarProps {
   onExport: () => void;
   onDelete: (path: string) => void;
   onRename: (path: string) => void;
-  variant: string;
   count: number;
 }
 
@@ -112,7 +90,6 @@ export function Sidebar({
   onExport,
   onDelete,
   onRename,
-  variant,
   count,
 }: SidebarProps) {
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; path: string } | null>(null);
@@ -160,7 +137,7 @@ export function Sidebar({
   };
 
   return (
-    <aside className={'sidebar sb-variant-' + variant}>
+    <aside className="sidebar">
       <div className="sb-brand">
         <span className="brand-mark" aria-hidden="true"></span>
         <span className="brand-name">aze</span>
@@ -179,7 +156,6 @@ export function Sidebar({
             onToggle={onToggle}
             onOpen={onOpen}
             onContextMenu={handleContextMenu}
-            variant={variant}
           />
         ))}
       </div>

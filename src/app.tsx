@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
-import type { CSSProperties } from 'react';
 import JSZip from 'jszip';
 import { buildTree, ancestorsOf, type Note } from './data';
 import { db } from './db';
@@ -15,36 +14,8 @@ import {
   referencedImageAssets,
   rewriteAssetUrlsForExport,
 } from './assets';
-import {
-  useTweaks,
-  TweaksPanel,
-  TweakSection,
-  TweakRadio,
-  TweakSlider,
-  TweakColor,
-} from './tweaks-panel';
 
 const TODAY = new Intl.DateTimeFormat('sv-SE').format(new Date());
-
-const TWEAK_DEFAULTS = {
-  vibe: 'editor',
-  sidebar: 'compact',
-  measure: 1200,
-  fontSize: 17,
-  accent: '#5b6b86',
-};
-
-const VIBE_LABELS: Record<string, string> = {
-  quiet: '静かな紙',
-  editor: 'エディタ',
-  editorial: '雑誌',
-};
-const SIDEBAR_LABELS: Record<string, string> = {
-  minimal: 'ミニマル',
-  guides: 'ガイド線',
-  markers: 'マーカー',
-  compact: 'コンパクト',
-};
 
 function renderWsOverlay(text: string): React.ReactNode[] {
   const out: React.ReactNode[] = [];
@@ -330,7 +301,6 @@ function RenameNoteDialog({ initialPath, onRename, onCancel }: RenameNoteDialogP
 }
 
 export default function App() {
-  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const rawNotes = useLiveQuery(() => db.notes.toArray(), []);
   const rawImageAssets = useLiveQuery(() => db.imageAssets.toArray(), []);
   const notes = useMemo(() => rawNotes ?? [], [rawNotes]);
@@ -665,16 +635,7 @@ export default function App() {
   }, [mode, creating, enterEdit, saveEdit, cancelEdit]);
 
   return (
-    <div
-      className={'app vibe-' + t.vibe}
-      style={
-        {
-          '--measure': t.measure + 'px',
-          '--body-size': t.fontSize + 'px',
-          '--accent': t.accent,
-        } as CSSProperties
-      }
-    >
+    <div className="app">
       <Sidebar
         tree={tree}
         expanded={expanded}
@@ -685,7 +646,6 @@ export default function App() {
         onExport={exportNotes}
         onDelete={deleteNote}
         onRename={setRenamingPath}
-        variant={t.sidebar}
         count={notes.length}
       />
 
@@ -824,48 +784,6 @@ export default function App() {
           onCancel={() => setRenamingPath(null)}
         />
       )}
-
-      <TweaksPanel>
-        <TweakSection label="探る軸" />
-        <TweakRadio
-          label="雰囲気"
-          value={t.vibe}
-          options={Object.entries(VIBE_LABELS).map(([value, label]) => ({ value, label }))}
-          onChange={(v) => setTweak('vibe', v)}
-        />
-        <TweakRadio
-          label="サイドバー"
-          value={t.sidebar}
-          options={Object.entries(SIDEBAR_LABELS).map(([value, label]) => ({ value, label }))}
-          onChange={(v) => setTweak('sidebar', v)}
-        />
-        <TweakSection label="読みやすさ" />
-        <TweakSlider
-          label="本文の幅"
-          value={t.measure}
-          min={720}
-          max={1400}
-          step={20}
-          unit="px"
-          onChange={(v) => setTweak('measure', v)}
-        />
-        <TweakSlider
-          label="文字サイズ"
-          value={t.fontSize}
-          min={15}
-          max={20}
-          step={1}
-          unit="px"
-          onChange={(v) => setTweak('fontSize', v)}
-        />
-        <TweakSection label="アクセント" />
-        <TweakColor
-          label="色"
-          value={t.accent}
-          options={['#6b6b6b', '#5b6b86', '#5b7a68', '#86705b']}
-          onChange={(v) => setTweak('accent', v)}
-        />
-      </TweaksPanel>
     </div>
   );
 }
