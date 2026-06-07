@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import type { CSSProperties } from 'react';
 import JSZip from 'jszip';
-import { buildTree, ancestorsOf } from './data';
+import { buildTree, ancestorsOf, type Note } from './data';
 import { db } from './db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { MarkdownPreview } from './markdown';
@@ -9,6 +9,7 @@ import { Sidebar } from './sidebar';
 import {
   assetMarkdownUrl,
   createAssetId,
+  extractAssetIdsFromMarkdown,
   exportedAssetPath,
   readableAltText,
   referencedImageAssets,
@@ -187,6 +188,22 @@ function parseNotePath(path: string): ParsedNotePath {
   return { path: nextPath, error: '' };
 }
 
+async function deleteUnreferencedImageAssets(notePath: string, body: string) {
+  const referencedIds = new Set(extractAssetIdsFromMarkdown(body));
+  const assets = await db.imageAssets.where('notePath').equals(notePath).toArray();
+  const staleIds = assets.filter((asset) => !referencedIds.has(asset.id)).map((asset) => asset.id);
+  if (staleIds.length > 0) {
+    await db.imageAssets.bulkDelete(staleIds);
+  }
+}
+
+async function persistNoteBody(note: Note, body: string) {
+  await db.transaction('rw', db.notes, db.imageAssets, async () => {
+    await db.notes.put({ ...note, body, updated: TODAY });
+    await deleteUnreferencedImageAssets(note.path, body);
+  });
+}
+
 interface NewNoteDialogProps {
   defaultPrefix: string;
   onCreate: (path: string) => void;
@@ -357,7 +374,7 @@ export default function App() {
     async (path: string) => {
       if (mode === 'edit' && current && path !== currentPath && draft !== current.body) {
         try {
-          await db.notes.put({ ...current, body: draft, updated: TODAY });
+          await persistNoteBody(current, draft);
         } catch {
           return;
         }
@@ -405,7 +422,7 @@ export default function App() {
 
   const saveEdit = useCallback(async () => {
     if (!current) return;
-    await db.notes.put({ ...current, body: draft, updated: TODAY });
+    await persistNoteBody(current, draft);
     setMode('view');
   }, [draft, current]);
 
@@ -498,7 +515,13 @@ export default function App() {
     [current, insertMarkdownAtCursor]
   );
 
-  const cancelEdit = useCallback(() => setMode('view'), []);
+  const cancelEdit = useCallback(async () => {
+    if (current) {
+      await deleteUnreferencedImageAssets(current.path, current.body);
+    }
+    setAssetError('');
+    setMode('view');
+  }, [current]);
 
   const createNote = useCallback(
     async (path: string) => {
