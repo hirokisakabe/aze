@@ -454,8 +454,7 @@ export default function App() {
       const exists = await db.notes.get(newPath);
       if (exists) return `「${newPath}」は既に存在します。`;
 
-      const body = oldPath === currentPath && mode === 'edit' ? draft : note.body;
-      const renamed = { ...note, path: newPath, body };
+      const renamed = { ...note, path: newPath };
 
       await db.transaction('rw', db.notes, db.settings, async () => {
         await db.notes.put(renamed);
@@ -471,7 +470,7 @@ export default function App() {
       }
       return null;
     },
-    [currentPath, draft, mode, notes]
+    [currentPath, notes]
   );
 
   const exportNotes = useCallback(async () => {
