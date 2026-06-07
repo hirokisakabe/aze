@@ -1,7 +1,7 @@
 import type { ImageAsset } from './db';
 
-export const ASSET_URL_PREFIX = 'aze-asset:';
-export const EXPORTED_ASSET_DIR = 'assets';
+const ASSET_URL_PREFIX = 'aze-asset:';
+const EXPORTED_ASSET_DIR = 'assets';
 
 export function createAssetId() {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -25,7 +25,7 @@ export function readableAltText(filename: string) {
   return normalized || 'uploaded image';
 }
 
-export function safeExportFilename(asset: ImageAsset) {
+function safeExportFilename(asset: ImageAsset) {
   const cleanName = asset.filename
     .replace(/[\\/]/g, '-')
     .replace(/[^\w.\- ]+/g, '')
