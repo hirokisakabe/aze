@@ -37,6 +37,15 @@ export function exportedAssetPath(asset: ImageAsset) {
   return `${EXPORTED_ASSET_DIR}/${safeExportFilename(asset)}`;
 }
 
+export function extractAssetIdsFromMarkdown(markdown: string) {
+  return Array.from(markdown.matchAll(/!\[[^\]]*\]\(aze-asset:([^)]+)\)/g), (match) => match[1]);
+}
+
+export function referencedImageAssets(markdowns: string[], assets: ImageAsset[]) {
+  const referencedAssetIds = new Set(markdowns.flatMap(extractAssetIdsFromMarkdown));
+  return assets.filter((asset) => referencedAssetIds.has(asset.id));
+}
+
 export function rewriteAssetUrlsForExport(markdown: string, assets: ImageAsset[]) {
   const pathById = new Map(assets.map((asset) => [asset.id, exportedAssetPath(asset)]));
   return markdown.replace(/!\[([^\]]*)\]\(aze-asset:([^)]+)\)/g, (match, alt, id) => {

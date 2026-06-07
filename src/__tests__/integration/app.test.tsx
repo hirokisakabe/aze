@@ -514,6 +514,40 @@ describe('コンテキストメニューからノートを削除できる', () =
     vi.restoreAllMocks();
   });
 
+  it('ノート削除時に紐づく画像アセットも削除する', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await db.notes.bulkPut([NOTE_A, NOTE_B]);
+    await db.imageAssets.bulkPut([
+      {
+        id: 'asset-a',
+        notePath: 'note-a.md',
+        filename: 'a.png',
+        mimeType: 'image/png',
+        blob: new Blob(['a'], { type: 'image/png' }),
+        created: '2024-01-01',
+      },
+      {
+        id: 'asset-b',
+        notePath: 'note-b.md',
+        filename: 'b.png',
+        mimeType: 'image/png',
+        blob: new Blob(['b'], { type: 'image/png' }),
+        created: '2024-01-01',
+      },
+    ]);
+    render(<App />);
+
+    await findSidebarText('Note A');
+    fireEvent.contextMenu(sidebarText('Note A'));
+    await userEvent.click(screen.getByText('削除'));
+
+    await waitFor(async () => {
+      expect(await db.imageAssets.get('asset-a')).toBeUndefined();
+      expect(await db.imageAssets.get('asset-b')).toBeDefined();
+    });
+    vi.restoreAllMocks();
+  });
+
   it('確認をキャンセルするとノートは削除されない', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(false);
     await db.notes.bulkPut([NOTE_A, NOTE_B]);
@@ -588,6 +622,32 @@ describe('既存ノートのパスを変更できる', () => {
       expect(document.querySelector('.crumb')?.textContent).toContain('renamed-note');
     });
     expect((await db.settings.get('lastOpenedPath'))?.value).toBe('renamed-note.md');
+  });
+
+  it('ノートの path 変更時に画像アセットの notePath も更新する', async () => {
+    await db.notes.bulkPut([NOTE_A]);
+    await db.imageAssets.put({
+      id: 'asset-a',
+      notePath: 'note-a.md',
+      filename: 'a.png',
+      mimeType: 'image/png',
+      blob: new Blob(['a'], { type: 'image/png' }),
+      created: '2024-01-01',
+    });
+    render(<App />);
+
+    await screen.findByText('Content of note A.');
+    fireEvent.contextMenu(sidebarText('Note A'));
+    await userEvent.click(screen.getByText('パス変更'));
+
+    const input = screen.getByPlaceholderText('archive/note.md');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'renamed-note.md');
+    await userEvent.keyboard('{Enter}');
+
+    await waitFor(async () => {
+      expect((await db.imageAssets.get('asset-a'))?.notePath).toBe('renamed-note.md');
+    });
   });
 
   it('フォルダを含む path に移動するとサイドバーとパンくずが新しい path を表示する', async () => {

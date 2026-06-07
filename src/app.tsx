@@ -11,6 +11,7 @@ import {
   createAssetId,
   exportedAssetPath,
   readableAltText,
+  referencedImageAssets,
   rewriteAssetUrlsForExport,
 } from './assets';
 import {
@@ -468,19 +469,27 @@ export default function App() {
       setAssetError('');
       try {
         const created = new Intl.DateTimeFormat('sv-SE').format(new Date());
-        const markdownLines: string[] = [];
-        for (const file of imageFiles) {
+        const assets = imageFiles.map((file) => {
           const id = createAssetId();
-          await db.imageAssets.add({
+          return {
             id,
             notePath: current.path,
             filename: file.name || 'image',
             mimeType: file.type,
             blob: file,
             created,
-          });
-          markdownLines.push(`![${readableAltText(file.name)}](${assetMarkdownUrl(id)})`);
-        }
+            markdown: `![${readableAltText(file.name)}](${assetMarkdownUrl(id)})`,
+          };
+        });
+        await db.transaction('rw', db.imageAssets, async () => {
+          await db.imageAssets.bulkAdd(
+            assets.map(({ markdown, ...asset }) => {
+              void markdown;
+              return asset;
+            })
+          );
+        });
+        const markdownLines = assets.map((asset) => asset.markdown);
         insertMarkdownAtCursor(markdownLines.join('\n'));
       } catch {
         setAssetError('画像を保存できませんでした。本文は変更していません。');
@@ -512,7 +521,10 @@ export default function App() {
 
   const deleteNote = useCallback(
     async (path: string) => {
-      await db.notes.delete(path);
+      await db.transaction('rw', db.notes, db.imageAssets, async () => {
+        await db.notes.delete(path);
+        await db.imageAssets.where('notePath').equals(path).delete();
+      });
       if (currentPath === path) {
         const remaining = notes.filter((n) => n.path !== path);
         if (remaining.length > 0) {
@@ -537,9 +549,10 @@ export default function App() {
 
       const renamed = { ...note, path: newPath };
 
-      await db.transaction('rw', db.notes, db.settings, async () => {
+      await db.transaction('rw', db.notes, db.settings, db.imageAssets, async () => {
         await db.notes.put(renamed);
         await db.notes.delete(oldPath);
+        await db.imageAssets.where('notePath').equals(oldPath).modify({ notePath: newPath });
         if (oldPath === currentPath) {
           await db.settings.put({ key: 'lastOpenedPath', value: newPath });
         }
@@ -559,10 +572,14 @@ export default function App() {
     const zip = new JSZip();
     const all = await db.notes.toArray();
     const allAssets = await db.imageAssets.toArray();
+    const referencedAssets = referencedImageAssets(
+      all.map((note) => note.body),
+      allAssets
+    );
     for (const note of all) {
-      zip.file(note.path, rewriteAssetUrlsForExport(note.body, allAssets));
+      zip.file(note.path, rewriteAssetUrlsForExport(note.body, referencedAssets));
     }
-    for (const asset of allAssets) {
+    for (const asset of referencedAssets) {
       zip.file(exportedAssetPath(asset), asset.blob);
     }
     const blob = await zip.generateAsync({ type: 'blob' });
