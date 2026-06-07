@@ -506,7 +506,7 @@ ul.md-list:not(.md-tasklist) > li::before {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 60px 72px 132px;
+  padding: 56px 72px 132px;
 }
 .editor-area-wrap {
   flex: 1;
