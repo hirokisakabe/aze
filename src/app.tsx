@@ -160,12 +160,23 @@ function getParentFolder(path: string): string {
   return lastSlash === -1 ? '' : path.slice(0, lastSlash + 1);
 }
 
-function normalizeNotePath(path: string): string {
+interface ParsedNotePath {
+  path: string;
+  error: string;
+}
+
+function parseNotePath(path: string): ParsedNotePath {
   let nextPath = path.trim();
-  if (!nextPath) return '';
+  if (!nextPath) return { path: '', error: '' };
   nextPath = nextPath.replace(/^\/+/, '').replace(/\/+/g, '/');
+  if (!nextPath || nextPath.endsWith('/')) {
+    return { path: '', error: 'ファイル名を含むパスを入力してください。' };
+  }
+  if (nextPath.split('/').some((part) => part === '.' || part === '..')) {
+    return { path: '', error: '「.」または「..」を含むパスは使えません。' };
+  }
   if (!nextPath.endsWith('.md')) nextPath += '.md';
-  return nextPath;
+  return { path: nextPath, error: '' };
 }
 
 interface NewNoteDialogProps {
@@ -176,14 +187,19 @@ interface NewNoteDialogProps {
 
 function NewNoteDialog({ defaultPrefix, onCreate, onCancel }: NewNoteDialogProps) {
   const [val, setVal] = useState(defaultPrefix);
+  const [error, setError] = useState('');
   const ref = useRef<HTMLInputElement>(null);
   useEffect(() => {
     ref.current?.focus();
   }, []);
   const submit = () => {
-    const p = normalizeNotePath(val);
-    if (!p) return;
-    onCreate(p);
+    const result = parseNotePath(val);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    if (!result.path) return;
+    onCreate(result.path);
   };
   return (
     <div className="dialog-scrim" onClick={onCancel}>
@@ -197,16 +213,25 @@ function NewNoteDialog({ defaultPrefix, onCreate, onCancel }: NewNoteDialogProps
             value={val}
             placeholder="ideas/new-idea.md"
             spellCheck={false}
-            onChange={(e) => setVal(e.target.value)}
+            onChange={(e) => {
+              setVal(e.target.value);
+              setError('');
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.nativeEvent.isComposing) submit();
               if (e.key === 'Escape') onCancel();
             }}
           />
         </div>
-        <div className="dialog-hint">
-          パスを入力 → <kbd>Enter</kbd> で作成。フォルダは自動で作られます。
-        </div>
+        {error ? (
+          <div className="dialog-error" role="alert">
+            {error}
+          </div>
+        ) : (
+          <div className="dialog-hint">
+            パスを入力 → <kbd>Enter</kbd> で作成。フォルダは自動で作られます。
+          </div>
+        )}
       </div>
     </div>
   );
@@ -229,9 +254,13 @@ function RenameNoteDialog({ initialPath, onRename, onCancel }: RenameNoteDialogP
   }, []);
 
   const submit = async () => {
-    const nextPath = normalizeNotePath(val);
-    if (!nextPath) return;
-    const message = await onRename(nextPath);
+    const result = parseNotePath(val);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    if (!result.path) return;
+    const message = await onRename(result.path);
     if (message) {
       setError(message);
       return;
