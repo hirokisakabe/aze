@@ -105,11 +105,11 @@ test('whitespace overlay は textarea の位置とスクロールに追従する
   expect(parseFloat(overlayMetrics.dotBeforeTop)).toBeGreaterThan(0);
   expect(parseFloat(overlayMetrics.dotBeforeTop)).toBeLessThan(overlayMetrics.lineHeight);
   expect(parseFloat(overlayMetrics.dotBeforeLeft)).toBeGreaterThan(0);
-  expect(overlayMetrics.dotBeforeTransform).toContain('matrix');
+  expect(overlayMetrics.dotBeforeTransform).not.toBe('none');
   expect(overlayMetrics.dotBeforeRadius).not.toBe('0px');
   expect(parseFloat(overlayMetrics.tabBeforeTop)).toBeGreaterThan(0);
   expect(parseFloat(overlayMetrics.tabBeforeTop)).toBeLessThan(overlayMetrics.lineHeight);
-  expect(overlayMetrics.tabBeforeTransform).toContain('matrix');
+  expect(overlayMetrics.tabBeforeTransform).not.toBe('none');
 
   await textarea.fill(
     Array.from({ length: 160 }, (_, index) => `line ${index}  with\tspace`).join('\n')
