@@ -52,6 +52,84 @@ test('ノートを編集して保存し、リロード後も内容が保持さ�
   await expect(page.getByText('This content should survive reload.')).toBeVisible();
 });
 
+test('whitespace overlay は textarea の位置とスクロールに追従する', async ({ page }) => {
+  await page.goto('/');
+  await createNote(page, 'whitespace-overlay.md');
+
+  const textarea = page.getByRole('textbox');
+  await textarea.fill(['alpha beta', '  indent  pair', 'tab\tmarker'].join('\n'));
+
+  const overlayMetrics = await page.locator('.editor-ws-overlay').evaluate((overlay) => {
+    const textarea = document.querySelector<HTMLTextAreaElement>('.editor-area');
+    const dot = overlay.querySelector<HTMLElement>('.ws-dot');
+    const tab = overlay.querySelector<HTMLElement>('.ws-tab');
+    if (!textarea || !dot || !tab) throw new Error('editor overlay elements are missing');
+
+    const overlayStyle = getComputedStyle(overlay);
+    const textareaStyle = getComputedStyle(textarea);
+    const dotStyle = getComputedStyle(dot, '::before');
+    const tabStyle = getComputedStyle(tab, '::before');
+    const overlayRect = overlay.getBoundingClientRect();
+    const textareaRect = textarea.getBoundingClientRect();
+    const dotRect = dot.getBoundingClientRect();
+
+    return {
+      sameFontFamily: overlayStyle.fontFamily === textareaStyle.fontFamily,
+      sameFontSize: overlayStyle.fontSize === textareaStyle.fontSize,
+      sameLineHeight: overlayStyle.lineHeight === textareaStyle.lineHeight,
+      sameTabSize: overlayStyle.tabSize === textareaStyle.tabSize,
+      contentLeft: overlayRect.left + parseFloat(overlayStyle.paddingLeft),
+      contentTop: overlayRect.top + parseFloat(overlayStyle.paddingTop),
+      textareaLeft: textareaRect.left,
+      textareaTop: textareaRect.top,
+      dotText: dot.textContent,
+      dotWidth: dotRect.width,
+      dotBeforeTop: dotStyle.top,
+      dotBeforeLeft: dotStyle.left,
+      dotBeforeTransform: dotStyle.transform,
+      dotBeforeRadius: dotStyle.borderRadius,
+      lineHeight: parseFloat(overlayStyle.lineHeight),
+      tabBeforeTop: tabStyle.top,
+      tabBeforeTransform: tabStyle.transform,
+    };
+  });
+
+  expect(overlayMetrics.sameFontFamily).toBe(true);
+  expect(overlayMetrics.sameFontSize).toBe(true);
+  expect(overlayMetrics.sameLineHeight).toBe(true);
+  expect(overlayMetrics.sameTabSize).toBe(true);
+  expect(Math.abs(overlayMetrics.contentLeft - overlayMetrics.textareaLeft)).toBeLessThan(0.5);
+  expect(Math.abs(overlayMetrics.contentTop - overlayMetrics.textareaTop)).toBeLessThan(0.5);
+  expect(overlayMetrics.dotText).toBe(' ');
+  expect(overlayMetrics.dotWidth).toBeGreaterThan(0);
+  expect(parseFloat(overlayMetrics.dotBeforeTop)).toBeGreaterThan(0);
+  expect(parseFloat(overlayMetrics.dotBeforeTop)).toBeLessThan(overlayMetrics.lineHeight);
+  expect(parseFloat(overlayMetrics.dotBeforeLeft)).toBeGreaterThan(0);
+  expect(overlayMetrics.dotBeforeTransform).toContain('matrix');
+  expect(overlayMetrics.dotBeforeRadius).not.toBe('0px');
+  expect(parseFloat(overlayMetrics.tabBeforeTop)).toBeGreaterThan(0);
+  expect(parseFloat(overlayMetrics.tabBeforeTop)).toBeLessThan(overlayMetrics.lineHeight);
+  expect(overlayMetrics.tabBeforeTransform).toContain('matrix');
+
+  await textarea.fill(
+    Array.from({ length: 160 }, (_, index) => `line ${index}  with\tspace`).join('\n')
+  );
+  const scrollTop = await textarea.evaluate((element) => {
+    const nextScrollTop = Math.min(240, element.scrollHeight - element.clientHeight);
+    element.scrollTop = nextScrollTop;
+    element.dispatchEvent(new Event('scroll'));
+    return nextScrollTop;
+  });
+
+  await expect
+    .poll(async () =>
+      page.locator('.editor-ws-overlay').evaluate((overlay) => ({
+        top: overlay.scrollTop,
+      }))
+    )
+    .toEqual({ top: scrollTop });
+});
+
 test('エクスポートボタンで zip がダウンロードされる', async ({ page }) => {
   await page.goto('/');
   await createNote(page, 'export-note.md');

@@ -35,7 +35,7 @@ function renderWsOverlay(text: string): React.ReactNode[] {
       flush();
       out.push(
         <span key={k++} className="ws-dot">
-          ·
+          {' '}
         </span>
       );
     } else if (ch === '\t') {

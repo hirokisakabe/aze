@@ -612,6 +612,7 @@ ul.md-list:not(.md-tasklist) > li::before {
   caret-color: var(--accent);
   min-height: 55vh;
   padding: 0;
+  tab-size: 8;
 }
 .editor-ws-overlay {
   position: absolute;
@@ -630,7 +631,19 @@ ul.md-list:not(.md-tasklist) > li::before {
   tab-size: 8;
 }
 .ws-dot {
-  color: color-mix(in oklab, var(--ink) 50%, transparent);
+  position: relative;
+  color: transparent;
+}
+.ws-dot::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0.2em;
+  height: 0.2em;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--ink) 50%, transparent);
+  transform: translate(-50%, -50%);
 }
 .ws-tab {
   color: transparent;
@@ -640,7 +653,10 @@ ul.md-list:not(.md-tasklist) > li::before {
   content: '→';
   position: absolute;
   left: 0;
+  top: 50%;
   color: color-mix(in oklab, var(--ink) 50%, transparent);
+  line-height: 1;
+  transform: translateY(-50%);
 }
 .editor-bar {
   position: sticky;
