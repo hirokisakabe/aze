@@ -831,13 +831,16 @@ kbd {
   cursor: pointer;
   color: var(--ink);
 }
-.sb-ctx-item:hover {
+.sb-ctx-item:hover,
+.sb-ctx-item:focus-visible {
   background: var(--hover);
+  outline: none;
 }
 .sb-ctx-delete {
   color: #c0392b;
 }
-.sb-ctx-delete:hover {
+.sb-ctx-delete:hover,
+.sb-ctx-delete:focus-visible {
   background: rgba(192, 57, 43, 0.08);
 }
 

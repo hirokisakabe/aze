@@ -17,7 +17,7 @@ interface TreeNodeProps {
   menuPath: string | null;
   onToggle: (path: string) => void;
   onOpen: (path: string) => void;
-  onOpenMenu: (rect: DOMRect, path: string) => void;
+  onOpenMenu: (trigger: HTMLButtonElement, path: string) => void;
 }
 
 function TreeNode({
@@ -86,7 +86,7 @@ function TreeNode({
         aria-expanded={menuPath === node.path}
         onClick={(e) => {
           e.stopPropagation();
-          onOpenMenu(e.currentTarget.getBoundingClientRect(), node.path);
+          onOpenMenu(e.currentTarget, node.path);
         }}
       >
         <MoreHorizontal width={14} height={14} aria-hidden="true" />
@@ -122,13 +122,24 @@ export function Sidebar({
 }: SidebarProps) {
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; path: string } | null>(null);
   const ctxRef = useRef<HTMLDivElement>(null);
-  const firstMenuItemRef = useRef<HTMLButtonElement>(null);
+  const firstMenuItemRef = useRef<HTMLButtonElement | null>(null);
+  const secondMenuItemRef = useRef<HTMLButtonElement | null>(null);
+  const triggerButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  const closeMenu = (restoreFocus = false) => {
+    setCtxMenu(null);
+    if (restoreFocus) {
+      triggerButtonRef.current?.focus();
+    }
+  };
 
   useEffect(() => {
     if (!ctxMenu) return;
     const handler = (e: MouseEvent) => {
-      if (ctxRef.current && !ctxRef.current.contains(e.target as Node)) {
-        setCtxMenu(null);
+      const target = e.target as Node;
+      if (triggerButtonRef.current?.contains(target)) return;
+      if (ctxRef.current && !ctxRef.current.contains(target)) {
+        closeMenu();
       }
     };
     document.addEventListener('mousedown', handler);
@@ -140,7 +151,7 @@ export function Sidebar({
     firstMenuItemRef.current?.focus();
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setCtxMenu(null);
+        closeMenu(true);
       }
     };
     document.addEventListener('keydown', handler);
@@ -157,8 +168,40 @@ export function Sidebar({
     }
   }, [ctxMenu]);
 
-  const handleOpenMenu = (rect: DOMRect, path: string) => {
+  const handleOpenMenu = (trigger: HTMLButtonElement, path: string) => {
+    if (ctxMenu?.path === path) {
+      closeMenu(true);
+      return;
+    }
+    triggerButtonRef.current = trigger;
+    const rect = trigger.getBoundingClientRect();
     setCtxMenu({ x: rect.right - 4, y: rect.bottom + 4, path });
+  };
+
+  const handleMenuKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const items = [firstMenuItemRef.current, secondMenuItemRef.current].filter(
+      (item): item is HTMLButtonElement => item !== null
+    );
+    if (items.length === 0) return;
+
+    const currentIndex = Math.max(
+      0,
+      items.findIndex((item) => item === document.activeElement)
+    );
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      items[(currentIndex + 1) % items.length].focus();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      items[(currentIndex - 1 + items.length) % items.length].focus();
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      items[0].focus();
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      items[items.length - 1].focus();
+    }
   };
 
   const handleDelete = () => {
@@ -230,6 +273,7 @@ export function Sidebar({
           ref={ctxRef}
           className="sb-ctx-menu"
           role="menu"
+          onKeyDown={handleMenuKeyDown}
           style={{ left: ctxMenu.x, top: ctxMenu.y }}
         >
           <button
@@ -243,6 +287,7 @@ export function Sidebar({
             パス変更
           </button>
           <button
+            ref={secondMenuItemRef}
             className="sb-ctx-item sb-ctx-delete"
             type="button"
             role="menuitem"

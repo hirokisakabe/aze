@@ -637,7 +637,25 @@ describe('ノート行のメニューからノートを操作できる', () => {
     expect(screen.getByRole('menu')).not.toBeNull();
     expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'パス変更' }));
 
+    await userEvent.keyboard('{ArrowDown}');
+    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: '削除' }));
+    await userEvent.keyboard('{ArrowUp}');
+    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'パス変更' }));
     await userEvent.keyboard('{Escape}');
+
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(document.activeElement).toBe(actionButton);
+  });
+
+  it('開いている操作ボタンをもう一度押すとメニューを閉じる', async () => {
+    await db.notes.bulkPut([NOTE_A]);
+    render(<App />);
+
+    await findSidebarText('Note A');
+    await openNoteActions('Note A');
+    expect(screen.getByRole('menu')).not.toBeNull();
+
+    await openNoteActions('Note A');
 
     expect(screen.queryByRole('menu')).toBeNull();
   });
