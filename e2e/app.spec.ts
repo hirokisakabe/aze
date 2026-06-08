@@ -66,7 +66,7 @@ test('エクスポートボタンで zip がダウンロードされる', async 
   const download = await downloadPromise;
 
   const today = new Intl.DateTimeFormat('sv-SE').format(new Date());
-  expect(download.suggestedFilename()).toBe(`notes-export-${today}.zip`);
+  expect(download.suggestedFilename()).toBe(`aze-notes-export-${today}.zip`);
 
   const path = await download.path();
   expect(path).not.toBeNull();

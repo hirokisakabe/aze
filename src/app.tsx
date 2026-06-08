@@ -579,7 +579,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `notes-export-${today}.zip`;
+    a.download = `aze-notes-export-${today}.zip`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 0);
   }, []);
