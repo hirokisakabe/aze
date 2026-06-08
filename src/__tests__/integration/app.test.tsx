@@ -639,6 +639,10 @@ describe('ノート行のメニューからノートを操作できる', () => {
 
     await userEvent.keyboard('{ArrowDown}');
     expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: '削除' }));
+    await userEvent.keyboard('{Home}');
+    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'パス変更' }));
+    await userEvent.keyboard('{End}');
+    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: '削除' }));
     await userEvent.keyboard('{ArrowUp}');
     expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'パス変更' }));
     await userEvent.keyboard('{Escape}');
