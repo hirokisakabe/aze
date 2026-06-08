@@ -172,6 +172,8 @@ body {
   background: var(--hover);
 }
 .sb-name {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -208,6 +210,38 @@ body {
 }
 .sb-file.is-active .sb-name {
   color: var(--ink);
+}
+.sb-action {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-faint);
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  flex-shrink: 0;
+  opacity: 0;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease,
+    opacity 0.12s ease;
+}
+.sb-file:hover .sb-action,
+.sb-file:focus-within .sb-action,
+.sb-file.is-active .sb-action {
+  opacity: 1;
+}
+.sb-action:hover,
+.sb-action:focus-visible {
+  color: var(--ink);
+  border-color: var(--line);
+  background: var(--bg);
+  outline: none;
 }
 
 /* ============================== main =============================== */

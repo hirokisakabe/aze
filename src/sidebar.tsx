@@ -1,5 +1,13 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { ChevronRight, Plus, Download, ExternalLink, Pencil } from 'lucide-react';
+import {
+  ChevronRight,
+  Plus,
+  Download,
+  ExternalLink,
+  Pencil,
+  MoreHorizontal,
+  Trash2,
+} from 'lucide-react';
 import type { TreeNode as TreeNodeData } from './data';
 
 interface TreeNodeProps {
@@ -8,13 +16,14 @@ interface TreeNodeProps {
   currentPath: string;
   onToggle: (path: string) => void;
   onOpen: (path: string) => void;
-  onContextMenu: (e: React.MouseEvent, path: string) => void;
+  onOpenMenu: (rect: DOMRect, path: string) => void;
 }
 
-function TreeNode({ node, expanded, currentPath, onToggle, onOpen, onContextMenu }: TreeNodeProps) {
+function TreeNode({ node, expanded, currentPath, onToggle, onOpen, onOpenMenu }: TreeNodeProps) {
   const isFolder = node.type === 'folder';
   const open = expanded.has(node.path);
   const active = node.path === currentPath;
+  const displayName = node.title ?? node.name.replace(/\.md$/, '');
 
   if (isFolder) {
     return (
@@ -43,7 +52,7 @@ function TreeNode({ node, expanded, currentPath, onToggle, onOpen, onContextMenu
                 currentPath={currentPath}
                 onToggle={onToggle}
                 onOpen={onOpen}
-                onContextMenu={onContextMenu}
+                onOpenMenu={onOpenMenu}
               />
             ))}
           </div>
@@ -56,13 +65,21 @@ function TreeNode({ node, expanded, currentPath, onToggle, onOpen, onContextMenu
     <div
       className={'sb-row sb-file' + (active ? ' is-active' : '')}
       onClick={() => onOpen(node.path)}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        onContextMenu(e, node.path);
-      }}
     >
       <span className="sb-twirl sb-twirl-empty" aria-hidden="true" />
-      <span className="sb-name">{node.title ?? node.name.replace(/\.md$/, '')}</span>
+      <span className="sb-name">{displayName}</span>
+      <button
+        className="sb-action"
+        type="button"
+        aria-label={`${displayName} の操作`}
+        aria-haspopup="menu"
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpenMenu(e.currentTarget.getBoundingClientRect(), node.path);
+        }}
+      >
+        <MoreHorizontal width={14} height={14} aria-hidden="true" />
+      </button>
     </div>
   );
 }
@@ -94,6 +111,7 @@ export function Sidebar({
 }: SidebarProps) {
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; path: string } | null>(null);
   const ctxRef = useRef<HTMLDivElement>(null);
+  const firstMenuItemRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!ctxMenu) return;
@@ -106,6 +124,18 @@ export function Sidebar({
     return () => document.removeEventListener('mousedown', handler);
   }, [ctxMenu]);
 
+  useEffect(() => {
+    if (!ctxMenu) return;
+    firstMenuItemRef.current?.focus();
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setCtxMenu(null);
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [ctxMenu]);
+
   useLayoutEffect(() => {
     if (!ctxMenu || !ctxRef.current) return;
     const rect = ctxRef.current.getBoundingClientRect();
@@ -116,8 +146,8 @@ export function Sidebar({
     }
   }, [ctxMenu]);
 
-  const handleContextMenu = (e: React.MouseEvent, path: string) => {
-    setCtxMenu({ x: e.clientX, y: e.clientY, path });
+  const handleOpenMenu = (rect: DOMRect, path: string) => {
+    setCtxMenu({ x: rect.right - 4, y: rect.bottom + 4, path });
   };
 
   const handleDelete = () => {
@@ -155,7 +185,7 @@ export function Sidebar({
             currentPath={currentPath}
             onToggle={onToggle}
             onOpen={onOpen}
-            onContextMenu={handleContextMenu}
+            onOpenMenu={handleOpenMenu}
           />
         ))}
       </div>
@@ -184,12 +214,29 @@ export function Sidebar({
       </div>
 
       {ctxMenu && (
-        <div ref={ctxRef} className="sb-ctx-menu" style={{ left: ctxMenu.x, top: ctxMenu.y }}>
-          <button className="sb-ctx-item" onClick={handleRename}>
+        <div
+          ref={ctxRef}
+          className="sb-ctx-menu"
+          role="menu"
+          style={{ left: ctxMenu.x, top: ctxMenu.y }}
+        >
+          <button
+            ref={firstMenuItemRef}
+            className="sb-ctx-item"
+            type="button"
+            role="menuitem"
+            onClick={handleRename}
+          >
             <Pencil width={13} height={13} aria-hidden="true" />
             パス変更
           </button>
-          <button className="sb-ctx-item sb-ctx-delete" onClick={handleDelete}>
+          <button
+            className="sb-ctx-item sb-ctx-delete"
+            type="button"
+            role="menuitem"
+            onClick={handleDelete}
+          >
+            <Trash2 width={13} height={13} aria-hidden="true" />
             削除
           </button>
         </div>
