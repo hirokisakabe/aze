@@ -14,12 +14,21 @@ interface TreeNodeProps {
   node: TreeNodeData;
   expanded: Set<string>;
   currentPath: string;
+  menuPath: string | null;
   onToggle: (path: string) => void;
   onOpen: (path: string) => void;
   onOpenMenu: (rect: DOMRect, path: string) => void;
 }
 
-function TreeNode({ node, expanded, currentPath, onToggle, onOpen, onOpenMenu }: TreeNodeProps) {
+function TreeNode({
+  node,
+  expanded,
+  currentPath,
+  menuPath,
+  onToggle,
+  onOpen,
+  onOpenMenu,
+}: TreeNodeProps) {
   const isFolder = node.type === 'folder';
   const open = expanded.has(node.path);
   const active = node.path === currentPath;
@@ -50,6 +59,7 @@ function TreeNode({ node, expanded, currentPath, onToggle, onOpen, onOpenMenu }:
                 node={c}
                 expanded={expanded}
                 currentPath={currentPath}
+                menuPath={menuPath}
                 onToggle={onToggle}
                 onOpen={onOpen}
                 onOpenMenu={onOpenMenu}
@@ -73,6 +83,7 @@ function TreeNode({ node, expanded, currentPath, onToggle, onOpen, onOpenMenu }:
         type="button"
         aria-label={`${displayName} の操作`}
         aria-haspopup="menu"
+        aria-expanded={menuPath === node.path}
         onClick={(e) => {
           e.stopPropagation();
           onOpenMenu(e.currentTarget.getBoundingClientRect(), node.path);
@@ -183,6 +194,7 @@ export function Sidebar({
             node={c}
             expanded={expanded}
             currentPath={currentPath}
+            menuPath={ctxMenu?.path ?? null}
             onToggle={onToggle}
             onOpen={onOpen}
             onOpenMenu={handleOpenMenu}

@@ -621,6 +621,27 @@ describe('ノート行のメニューからノートを操作できる', () => {
     expect(screen.queryByText('パス変更')).toBeNull();
   });
 
+  it('操作ボタンはキーボードで開閉でき、メニュー項目へフォーカスが移る', async () => {
+    await db.notes.bulkPut([NOTE_A]);
+    render(<App />);
+
+    await findSidebarText('Note A');
+    const row = sidebarText('Note A').closest('.sb-file');
+    if (!row) throw new Error('note row not found: Note A');
+    const actionButton = within(row as HTMLElement).getByRole('button', { name: 'Note A の操作' });
+
+    actionButton.focus();
+    await userEvent.keyboard('{Enter}');
+
+    expect(actionButton.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('menu')).not.toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'パス変更' }));
+
+    await userEvent.keyboard('{Escape}');
+
+    expect(screen.queryByRole('menu')).toBeNull();
+  });
+
   it('「削除」を選択して確認すると IndexedDB から削除されてサイドバーから消える', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     await db.notes.bulkPut([NOTE_A, NOTE_B]);
