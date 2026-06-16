@@ -202,7 +202,6 @@ function NewNoteDialog({ defaultPrefix, onCreate, onCancel }: NewNoteDialogProps
       <div className="dialog" onClick={(e) => e.stopPropagation()}>
         <div className="dialog-label">新規ノート</div>
         <div className="dialog-row">
-          <span className="dialog-prefix">~/notes/</span>
           <input
             ref={ref}
             className="dialog-input"
@@ -269,7 +268,6 @@ function RenameNoteDialog({ initialPath, onRename, onCancel }: RenameNoteDialogP
       <div className="dialog" onClick={(e) => e.stopPropagation()}>
         <div className="dialog-label">パス変更</div>
         <div className="dialog-row">
-          <span className="dialog-prefix">~/notes/</span>
           <input
             ref={ref}
             className="dialog-input"

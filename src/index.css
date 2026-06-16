@@ -781,11 +781,6 @@ kbd {
   border-bottom: 1.5px solid var(--line);
   padding-bottom: 8px;
 }
-.dialog-prefix {
-  font-family: var(--mono);
-  font-size: 15px;
-  color: var(--ink-faint);
-}
 .dialog-input {
   flex: 1;
   border: none;
