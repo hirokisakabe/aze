@@ -229,7 +229,6 @@ export function Sidebar({
           <Plus width={14} height={14} aria-hidden="true" />
         </button>
       </div>
-      <div className="sb-rootlabel">~/notes</div>
       <div className="sb-tree">
         {(tree.children ?? []).map((c) => (
           <TreeNode

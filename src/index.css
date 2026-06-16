@@ -80,13 +80,6 @@ body {
   letter-spacing: 0.005em;
   color: var(--ink);
 }
-.sb-rootlabel {
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.05em;
-  color: var(--ink-faint);
-  padding: 0 18px 12px;
-}
 .sb-brand .sb-new {
   margin-left: auto;
 }
