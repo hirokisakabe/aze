@@ -203,7 +203,9 @@ export interface FsNotesHandler {
 export function createFsNotesHandler(options: { vaultRoot: string }): FsNotesHandler {
   const { vaultRoot } = options;
   let watcher: VaultWatcher | null = null;
-  let subscriberCount = 0;
+  // アクティブな SSE 接続の cleanup 関数。接続数の管理 (= watcher のライフサイクル) と
+  // handler.close() による一括解放の両方に使う。
+  const sessions = new Set<() => void>();
 
   function handleEvents(req: IncomingMessage, res: ServerResponse): void {
     res.statusCode = 200;
@@ -215,7 +217,6 @@ export function createFsNotesHandler(options: { vaultRoot: string }): FsNotesHan
     res.write('retry: 3000\n\n');
 
     if (!watcher) watcher = createVaultWatcher(vaultRoot);
-    subscriberCount += 1;
 
     const send = (chunk: string): void => {
       if (res.writableEnded) return;
@@ -235,12 +236,22 @@ export function createFsNotesHandler(options: { vaultRoot: string }): FsNotesHan
       cleanedUp = true;
       clearInterval(keepAlive);
       unsubscribe();
-      subscriberCount -= 1;
-      if (subscriberCount === 0 && watcher) {
+      sessions.delete(cleanup);
+      // SSE レスポンスを閉じ、server.close() が待ち続けないようにする。
+      if (!res.writableEnded) {
+        try {
+          res.end();
+        } catch {
+          // 既に切れている場合は無視する。
+        }
+      }
+      // 最後の接続が消えたら watcher も解放する (購読リーク防止)。
+      if (sessions.size === 0 && watcher) {
         watcher.close();
         watcher = null;
       }
     };
+    sessions.add(cleanup);
     req.on('close', cleanup);
     res.on('close', cleanup);
   }
@@ -257,11 +268,14 @@ export function createFsNotesHandler(options: { vaultRoot: string }): FsNotesHan
   }) as FsNotesHandler;
 
   handler.close = (): void => {
+    // アクティブな全 SSE 接続を閉じる。各 cleanup が sessions から自身を消し、
+    // 最後の 1 つが watcher を解放する (sessions のコピーを回して反復中の変更に耐える)。
+    for (const cleanup of [...sessions]) cleanup();
+    // 接続が 1 つも無かった場合に備え、watcher が残っていれば確実に解放する。
     if (watcher) {
       watcher.close();
       watcher = null;
     }
-    subscriberCount = 0;
   };
 
   return handler;

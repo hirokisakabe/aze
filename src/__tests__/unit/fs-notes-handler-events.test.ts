@@ -93,4 +93,16 @@ describe('createFsNotesHandler /events (SSE)', () => {
     const handler = createFsNotesHandler({ vaultRoot: vault });
     expect(() => handler.close()).not.toThrow();
   });
+
+  it('close() はアクティブな SSE 接続を閉じる (response を end する)', async () => {
+    const handler = createFsNotesHandler({ vaultRoot: vault });
+    const { req, res } = makeConnection();
+    await handler(req, res as unknown as ServerResponse);
+
+    expect((res as unknown as { writableEnded: boolean }).writableEnded).toBe(false);
+    handler.close();
+    expect((res as unknown as { writableEnded: boolean }).writableEnded).toBe(true);
+
+    req.emit('close'); // 二重 cleanup が安全なことも確認 (throw しない)。
+  });
 });
