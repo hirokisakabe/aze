@@ -116,6 +116,9 @@ function serve(options: ServeOptions): void {
     });
   });
 
+  // サーバー停止時に file watcher を解放する (プロセス終了時の取りこぼしを防ぐ)。
+  server.on('close', () => notesHandler.close());
+
   server.on('error', (err: NodeJS.ErrnoException) => {
     if (err.code === 'EADDRINUSE') {
       console.error(`aze: port ${options.port} is already in use`);

@@ -8,12 +8,13 @@ import type { NotesRepository, Unsubscribe } from './notes-repository';
  * スコープ (issue #78 の最小実験):
  * - notes の read / list / create / save / delete / rename のみ対応する。
  * - 画像 (imageAssets) と wikilink は未対応。画像系メソッドは no-op / 空配列を返す。
- * - file watch による auto-reload は持たない。自アプリ内の編集後のみ再 fetch して通知する。
- *   別プロセス (Claude Code 等) の編集はリロードするまで反映されない。
+ * - 別プロセス (Claude Code 等) の外部編集は `/api/notes/events` (SSE) を購読して auto-reload する
+ *   (issue #87)。SSE が使えない環境 (EventSource 不在) では自アプリ内の編集後のみ再 fetch して通知する。
  * - lastOpenedPath は vault を汚さないよう localStorage に保持する (UI state であり vault の中身ではない)。
  */
 
 const BASE = '/api/notes';
+const EVENTS_URL = `${BASE}/events`;
 const LAST_OPENED_KEY = 'aze:fs:lastOpenedPath';
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -27,6 +28,7 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
 
 export class FsNotesRepository implements NotesRepository {
   private noteListeners = new Set<(notes: Note[]) => void>();
+  private eventSource: EventSource | null = null;
 
   constructor() {
     // subscribe* は app 層で `useRepositorySubscription(notesRepository.subscribeNotes)` のように
@@ -50,6 +52,7 @@ export class FsNotesRepository implements NotesRepository {
 
   subscribeNotes(listener: (notes: Note[]) => void): Unsubscribe {
     this.noteListeners.add(listener);
+    this.ensureEventSource();
     void this.loadNotes().then((notes) => {
       if (this.noteListeners.has(listener)) {
         listener(notes);
@@ -57,7 +60,31 @@ export class FsNotesRepository implements NotesRepository {
     });
     return () => {
       this.noteListeners.delete(listener);
+      if (this.noteListeners.size === 0) {
+        this.closeEventSource();
+      }
     };
+  }
+
+  /**
+   * `/api/notes/events` (SSE) を 1 本だけ張り、外部編集の push を受けて全 listener へ再通知する。
+   * EventSource は接続断時に自動再接続するため、dev サーバー再起動も透過的に復帰する。
+   * EventSource 非対応環境 (テストの jsdom 等) では auto-reload を諦め、従来の手動再 fetch のみとする。
+   */
+  private ensureEventSource(): void {
+    if (this.eventSource || typeof EventSource === 'undefined') return;
+    const source = new EventSource(EVENTS_URL);
+    source.addEventListener('change', () => {
+      void this.notifyNotes().catch(() => {
+        // 一時的な fetch 失敗は無視する。次の push か手動操作で再同期される。
+      });
+    });
+    this.eventSource = source;
+  }
+
+  private closeEventSource(): void {
+    this.eventSource?.close();
+    this.eventSource = null;
   }
 
   subscribeImageAssets(listener: (assets: ImageAsset[]) => void): Unsubscribe {

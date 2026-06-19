@@ -32,6 +32,10 @@ export function fsNotesPlugin(options: { vaultPath?: string }): Plugin {
         }
         void handler(req, res);
       });
+      // dev サーバー停止時に file watcher を解放する (SSE 購読が残っていてもリークさせない)。
+      if (handler) {
+        server.httpServer?.on('close', () => handler.close());
+      }
     },
   };
 }
