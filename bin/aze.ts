@@ -183,20 +183,22 @@ function main(): void {
 
 /**
  * このモジュールが CLI エントリとして直接実行されたか判定する。
- * npm の bin symlink 経由 (process.argv[1] が symlink パス) でも一致するよう
- * realpath に正規化してから import.meta.url と比較する。import で読み込まれた
- * 場合 (テスト等) は false となり、副作用の main() を実行しない。
+ * npm の bin symlink 経由 (entryPath が symlink パス) でも一致するよう realpath に
+ * 正規化してから moduleUrl と比較する。import で読み込まれた場合 (テスト等) は
+ * false となり、副作用の main() を実行しない。
+ *
+ * @param entryPath 実行エントリのパス (通常 process.argv[1])
+ * @param moduleUrl このモジュールの URL (通常 import.meta.url)
  */
-function isCliEntry(): boolean {
-  const entry = process.argv[1];
-  if (!entry) return false;
+export function isCliEntry(entryPath: string | undefined, moduleUrl: string): boolean {
+  if (!entryPath) return false;
   try {
-    return import.meta.url === pathToFileURL(realpathSync(entry)).href;
+    return moduleUrl === pathToFileURL(realpathSync(entryPath)).href;
   } catch {
     return false;
   }
 }
 
-if (isCliEntry()) {
+if (isCliEntry(process.argv[1], import.meta.url)) {
   main();
 }

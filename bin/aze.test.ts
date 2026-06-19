@@ -1,10 +1,12 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  isCliEntry,
   parseServeArgs,
   serve,
   serverErrorMessage,
@@ -217,21 +219,69 @@ describe('validateSpaBuilt', () => {
 
 describe('serve', () => {
   let spies: ReturnType<typeof stubProcess>;
+  let dir: string;
 
   beforeEach(() => {
     spies = stubProcess();
+    dir = mkdtempSync(path.join(os.tmpdir(), 'aze-cli-serve-'));
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    rmSync(dir, { recursive: true, force: true });
   });
 
   it('notes ディレクトリ不在ならエラー出力して終了する', () => {
-    const missing = path.join(os.tmpdir(), 'aze-cli-does-not-exist-xyz');
+    // dir 自体は実在するが、その配下の missing は存在しない (一意で衝突しない)。
+    const missing = path.join(dir, 'missing');
     expect(() => serve({ notesDir: missing, port: 4321 })).toThrow(ExitError);
     expect(spies.exit).toHaveBeenCalledWith(1);
     expect(spies.error).toHaveBeenCalledWith(
       expect.stringContaining('notes directory not found or not a directory')
     );
+  });
+});
+
+describe('isCliEntry', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(path.join(os.tmpdir(), 'aze-cli-entry-'));
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('entryPath が未指定なら false', () => {
+    expect(isCliEntry(undefined, 'file:///whatever.js')).toBe(false);
+  });
+
+  it('entryPath の URL が moduleUrl と一致すれば true', () => {
+    const file = path.join(dir, 'aze.js');
+    writeFileSync(file, '');
+    // tmpdir 自体が symlink (macOS の /var→/private/var 等) の場合に備え realpath で正規化する。
+    const moduleUrl = pathToFileURL(realpathSync(file)).href;
+    expect(isCliEntry(file, moduleUrl)).toBe(true);
+  });
+
+  it('symlink 経由の entryPath でも realpath 正規化して一致させる (npm bin 相当)', () => {
+    const real = path.join(dir, 'aze.js');
+    writeFileSync(real, '');
+    const link = path.join(dir, 'aze-link.js');
+    symlinkSync(real, link);
+    // moduleUrl は実体ファイルの URL。argv[1] が symlink でも true になること。
+    const moduleUrl = pathToFileURL(realpathSync(real)).href;
+    expect(isCliEntry(link, moduleUrl)).toBe(true);
+  });
+
+  it('moduleUrl と異なるファイルなら false', () => {
+    const file = path.join(dir, 'aze.js');
+    writeFileSync(file, '');
+    expect(isCliEntry(file, 'file:///other/module.js')).toBe(false);
+  });
+
+  it('存在しない entryPath は realpath 解決に失敗し false', () => {
+    expect(isCliEntry(path.join(dir, 'missing.js'), 'file:///whatever.js')).toBe(false);
   });
 });
