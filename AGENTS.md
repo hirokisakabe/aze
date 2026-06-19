@@ -18,6 +18,8 @@
 - `npm run test:watch`: run Vitest in watch mode.
 - `npm run test:e2e`: run Playwright tests; it starts Vite on `E2E_PORT` or `9090`.
 - `npm run knip`: check for unused files, dependencies, and exports.
+- `npx changeset`: record a changeset for a user-visible change (see Release).
+- `npm run version` / `npm run release`: bump versions and publish; run by the release workflow, not manually.
 
 ## Coding Style & Naming Conventions
 
@@ -29,7 +31,15 @@ Use Vitest with jsdom for `src/**/*.test.{ts,tsx}`. Setup is in `src/__tests__/s
 
 ## Commit & Pull Request Guidelines
 
-Recent history uses short imperative commits, often Conventional Commit prefixes such as `fix:` and `feat:`. Keep commits focused and describe the user-visible change. Pull requests should summarize the change, list verification commands, and include screenshots for visual changes. PR descriptions must be written in Japanese. Only when the user explicitly provides an issue number, start the PR description with `close #<issue-number>`.
+Recent history uses short imperative commits, often Conventional Commit prefixes such as `fix:` and `feat:`. Keep commits focused and describe the user-visible change. Pull requests should summarize the change, list verification commands, and include screenshots for visual changes. PR descriptions must be written in Japanese. Only when the user explicitly provides an issue number, start the PR description with `close #<issue-number>`. Include a changeset (`npx changeset`) when the PR makes a user-visible change (see Release).
+
+## Release
+
+Publishing `aze-cli` to npm is automated with [changesets](https://github.com/changesets/changesets) via `.github/workflows/release.yml` (OIDC version requirements are documented in that file's comments).
+
+- A PR with a user-visible change must include a changeset (`npx changeset`). Infra/docs-only changes don't need one.
+- Merging changesets to `main` opens a "Version Packages" PR; merging that PR runs `changeset publish` (= `npm publish`). `prepublishOnly` builds `dist-cli/` and `dist-fs/` into the package.
+- Auth uses npm OIDC Trusted Publishing — no `NPM_TOKEN` / `NODE_AUTH_TOKEN`. One-time setup (already done): register a Trusted Publisher for `aze-cli` on npmjs (repo `hirokisakabe/aze`, workflow filename `release.yml`). OIDC can't perform the initial publish, so v0.1.0 was published manually with `npm publish`.
 
 ## Agent-Specific Instructions
 
