@@ -1,12 +1,38 @@
 {
-  "name": "aze",
-  "private": true,
+  "name": "aze-cli",
   "version": "0.1.0",
+  "description": "ローカルの Markdown vault をブラウザの aze エディタで編集する CLI (aze serve)",
   "type": "module",
   "bin": {
-    "aze": "./dist-cli/aze.js"
+    "aze": "dist-cli/aze.js"
+  },
+  "files": [
+    "dist-cli",
+    "dist-fs"
+  ],
+  "keywords": [
+    "markdown",
+    "notes",
+    "vault",
+    "obsidian",
+    "editor",
+    "cli"
+  ],
+  "homepage": "https://github.com/hirokisakabe/aze#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hirokisakabe/aze.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hirokisakabe/aze/issues"
+  },
+  "author": "hirokisakabe",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
   },
   "scripts": {
+    "prepublishOnly": "npm run build:local",
     "dev": "vite",
     "build": "vite build",
     "build:serve": "VITE_STORAGE_DRIVER=fs vite build --outDir dist-fs",
@@ -22,7 +48,8 @@
     "test:e2e": "playwright test",
     "knip": "knip"
   },
-  "dependencies": {
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "dexie": "^4.4.2",
     "jszip": "^3.10.1",
     "lucide-react": "^1.17.0",
@@ -31,10 +58,7 @@
     "react-markdown": "^10.1.0",
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
-    "sirv": "^3.0.2"
-  },
-  "devDependencies": {
-    "@playwright/test": "^1.60.0",
+    "sirv": "^3.0.2",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
