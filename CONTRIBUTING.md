@@ -36,13 +36,15 @@ publish には npm の [OIDC Trusted Publishing](https://docs.npmjs.com/trusted-
 OIDC では初回 publish ができない ([npm/cli#8544](https://github.com/npm/cli/issues/8544)) ため、最初の 1 回 (v0.1.0) はローカルから手動で publish する。
 
 ```sh
-npm publish --provenance
+npm publish
 ```
+
+> provenance は cloud-hosted CI からの publish が前提で、ローカル手動 publish では付与できない。初回はローカルの通常 publish で構わない。2 回目以降は Release ワークフロー (OIDC) から publish され、provenance も自動付与される。
 
 その後、npmjs の Web UI で `aze-cli` パッケージに **Trusted Publisher** を登録する。
 
 - リポジトリ: `hirokisakabe/aze`
-- ワークフローファイル: `.github/workflows/release.yml`
+- ワークフローファイル名: `release.yml` (npm UI にはフルパスではなくファイル名のみを入力する)
 
 これ以降のバージョンは Release ワークフローから OIDC で自動 publish される。
 
