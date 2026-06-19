@@ -116,6 +116,17 @@ function serve(options: ServeOptions): void {
     });
   });
 
+  server.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`aze: port ${options.port} is already in use`);
+    } else if (err.code === 'EACCES') {
+      console.error(`aze: permission denied to bind ${HOST}:${options.port}`);
+    } else {
+      console.error(`aze: server error: ${err.message}`);
+    }
+    process.exit(1);
+  });
+
   // 127.0.0.1 にのみバインドし、ネットワークへは公開しない。
   server.listen(options.port, HOST, () => {
     console.log(`aze serve → http://${HOST}:${options.port}`);

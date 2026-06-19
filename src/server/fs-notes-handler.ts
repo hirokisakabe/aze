@@ -48,9 +48,25 @@ function toDateString(d: Date): string {
 /** rel が vault root 配下の .md を指すことを保証する。逸脱したら null。 */
 export function resolveInVault(vaultRoot: string, rel: string | null | undefined): string | null {
   if (!rel || !rel.endsWith('.md')) return null;
+  // API の契約は「vault root 相対パス」。絶対パスは path.resolve が vaultRoot を無視して
+  // しまい、たまたま vault 内を指すと note.path に絶対パスが混入するため明示的に弾く。
+  if (path.isAbsolute(rel)) return null;
   const abs = path.resolve(vaultRoot, rel);
   if (abs !== vaultRoot && !abs.startsWith(vaultRoot + path.sep)) return null;
   return abs;
+}
+
+/** request body を JSON object としてパースする。不正なら null (= 呼び出し側で 400)。 */
+function parseJsonObject(raw: string): Record<string, unknown> | null {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 async function listMarkdown(vaultRoot: string, dir = ''): Promise<string[]> {
@@ -124,12 +140,17 @@ async function handle(req: IncomingMessage, res: ServerResponse, vaultRoot: stri
       }
     }
     if (method === 'PUT') {
-      const note = JSON.parse(await readBody(req)) as FsNote;
-      const abs = resolveInVault(vaultRoot, note.path);
+      const payload = parseJsonObject(await readBody(req));
+      const notePath = payload?.path;
+      const body = payload?.body;
+      if (typeof notePath !== 'string' || typeof body !== 'string') {
+        return sendJson(res, 400, { error: 'invalid body' });
+      }
+      const abs = resolveInVault(vaultRoot, notePath);
       if (!abs) return sendJson(res, 400, { error: 'invalid path' });
       await fs.mkdir(path.dirname(abs), { recursive: true });
-      await fs.writeFile(abs, note.body, 'utf8');
-      const saved = await readNote(vaultRoot, note.path);
+      await fs.writeFile(abs, body, 'utf8');
+      const saved = await readNote(vaultRoot, notePath);
       return sendJson(res, 200, { note: saved });
     }
     if (method === 'DELETE') {
@@ -141,10 +162,12 @@ async function handle(req: IncomingMessage, res: ServerResponse, vaultRoot: stri
   }
 
   if (pathname === '/rename' && method === 'POST') {
-    const { oldPath, newPath } = JSON.parse(await readBody(req)) as {
-      oldPath: string;
-      newPath: string;
-    };
+    const payload = parseJsonObject(await readBody(req));
+    const oldPath = payload?.oldPath;
+    const newPath = payload?.newPath;
+    if (typeof oldPath !== 'string' || typeof newPath !== 'string') {
+      return sendJson(res, 400, { error: 'invalid body' });
+    }
     const absOld = resolveInVault(vaultRoot, oldPath);
     const absNew = resolveInVault(vaultRoot, newPath);
     if (!absOld || !absNew) return sendJson(res, 400, { error: 'invalid path' });
