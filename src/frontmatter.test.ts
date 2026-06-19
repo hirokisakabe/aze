@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseFrontmatter } from '../../frontmatter';
+import { parseFrontmatter } from './frontmatter';
 
 describe('parseFrontmatter', () => {
   it('frontmatter が無い本文はそのまま返す', () => {
