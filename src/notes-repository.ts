@@ -1,6 +1,7 @@
 import { liveQuery } from 'dexie';
 import type { ImageAsset, Note } from './data';
 import { db } from './db';
+import { FsNotesRepository } from './fs-notes-repository';
 
 export type Unsubscribe = () => void;
 
@@ -139,4 +140,12 @@ class IndexedDbNotesRepository implements NotesRepository {
   }
 }
 
-export const notesRepository: NotesRepository = new IndexedDbNotesRepository();
+/**
+ * driver 選択。デフォルトは IndexedDB (本番 / Web / テスト)。`VITE_STORAGE_DRIVER=fs` を
+ * 明示した dev サーバーでのみ filesystem driver を使う。本番ビルドにこの env は無いため、
+ * Web 配布版の挙動は従来どおり IndexedDB のまま変わらない。
+ */
+export const notesRepository: NotesRepository =
+  import.meta.env.VITE_STORAGE_DRIVER === 'fs'
+    ? new FsNotesRepository()
+    : new IndexedDbNotesRepository();
