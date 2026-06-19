@@ -12,6 +12,8 @@ import path from 'node:path';
  *   自前実装にしている。全プラットフォームで安定して動く非 recursive watch のみを使う。
  * - 通知は「何かが変わった」というシグナルのみで、ファイル単位の差分は持たない。購読側
  *   (FsNotesRepository) が通知のたびに full re-list するため、個々のイベント欠落 / 重複に強い。
+ *   内容変更 (change) は .md のみ通知し、構造変化 (rename: 作成 / 削除 / リネーム) は
+ *   ディレクトリ増減も拾うため絞らずに通知する。
  * - dotfile / node_modules は listMarkdown (fs-notes-handler) と同じ基準で watch 対象外にする。
  */
 
@@ -58,11 +60,18 @@ export function createVaultWatcher(
     if (closed || watchers.has(dir)) return;
     let watcher: FSWatcher;
     try {
-      watcher = watch(dir, (eventType) => {
-        // rename は entry の作成 / 削除 / リネーム (= ディレクトリ構造の変化) を含むため、
-        // watcher 集合をディレクトリツリーに追従させる。change は内容変更のみなので reconcile 不要。
-        if (eventType === 'rename') scheduleReconcile();
-        scheduleNotify();
+      watcher = watch(dir, (eventType, filename) => {
+        if (eventType === 'rename') {
+          // rename は entry の作成 / 削除 / リネーム (= ディレクトリ構造の変化) を含む。
+          // watcher 集合をツリーに追従させたうえで通知する。.md / サブディレクトリの増減を
+          // 取りこぼさないため、ここでは filename で絞らない (新規ディレクトリ作成等も拾う)。
+          scheduleReconcile();
+          scheduleNotify();
+          return;
+        }
+        // change は内容変更。notes 一覧に効くのは .md の内容だけなので、それ以外 (画像等) は
+        // 無視して無駄な full re-list を抑える。
+        if (typeof filename === 'string' && filename.endsWith('.md')) scheduleNotify();
       });
     } catch {
       // 列挙直後に削除される等で watch に失敗しても、次の reconcile で整合が取れるため無視する。
