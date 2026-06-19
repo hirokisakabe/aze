@@ -3,6 +3,7 @@ import type { ReactElement, ReactNode } from 'react';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
+import remarkGemoji from 'remark-gemoji';
 import type { Components } from 'react-markdown';
 import { assetIdFromMarkdownUrl } from './assets';
 import { parseFrontmatter } from './frontmatter';
@@ -148,7 +149,7 @@ export function MarkdownPreview({ content, resolveAssetUrl }: MarkdownPreviewPro
     <>
       {entries.length > 0 && <FrontmatterPanel entries={entries} />}
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkBreaks]}
+        remarkPlugins={[remarkGfm, remarkBreaks, remarkGemoji]}
         components={components}
         urlTransform={transformMarkdownUrl}
       >
