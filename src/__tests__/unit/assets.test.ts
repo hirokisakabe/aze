@@ -4,7 +4,7 @@ import {
   referencedImageAssets,
   rewriteAssetUrlsForExport,
 } from '../../assets';
-import type { ImageAsset } from '../../db';
+import type { ImageAsset } from '../../data';
 
 function asset(id: string, filename = `${id}.png`): ImageAsset {
   return {

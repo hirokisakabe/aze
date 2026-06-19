@@ -1,4 +1,4 @@
-import type { ImageAsset } from './db';
+import type { ImageAsset } from './data';
 
 const ASSET_URL_PREFIX = 'aze-asset:';
 const EXPORTED_ASSET_DIR = 'assets';
