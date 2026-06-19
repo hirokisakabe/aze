@@ -194,4 +194,25 @@ describe('MarkdownPreview', () => {
     const { container } = render(<MarkdownPreview content={'# ただの見出し\n\ntext'} />);
     expect(container.querySelector('.md-frontmatter')).toBeNull();
   });
+
+  it('gemoji shortcode を対応する絵文字に変換する', () => {
+    const { container } = render(<MarkdownPreview content=":smile: と :rocket:" />);
+    const p = container.querySelector('p');
+    expect(p).not.toBeNull();
+    expect(p!.textContent).toBe('😄 と 🚀');
+  });
+
+  it('インラインコード内の shortcode はリテラル表示のまま保つ', () => {
+    const { container } = render(<MarkdownPreview content="Use `:smile:`" />);
+    const code = container.querySelector('code');
+    expect(code).not.toBeNull();
+    expect(code!.textContent).toBe(':smile:');
+  });
+
+  it('コードブロック内の shortcode はリテラル表示のまま保つ', () => {
+    const { container } = render(<MarkdownPreview content={'```\n:smile:\n```'} />);
+    const code = container.querySelector('pre code');
+    expect(code).not.toBeNull();
+    expect(code!.textContent).toContain(':smile:');
+  });
 });
