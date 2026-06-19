@@ -1,7 +1,7 @@
-import { statSync } from 'node:fs';
+import { realpathSync, statSync } from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import sirv from 'sirv';
 
@@ -34,7 +34,7 @@ function printUsage(): void {
   -h, --help       このヘルプを表示`);
 }
 
-function parseServeArgs(argv: string[]): ServeOptions {
+export function parseServeArgs(argv: string[]): ServeOptions {
   let notesDir: string | undefined;
   let port = DEFAULT_PORT;
   for (let i = 0; i < argv.length; i++) {
@@ -67,7 +67,7 @@ function parseServeArgs(argv: string[]): ServeOptions {
 }
 
 /** req.url から `/api/notes` プレフィックスを除き、fs ハンドラが期待する相対パスにする。 */
-function stripApiPrefix(url: string): string {
+export function stripApiPrefix(url: string): string {
   const rest = url.slice(API_PREFIX.length);
   if (rest === '') return '/';
   return rest.startsWith('?') ? `/${rest}` : rest;
@@ -79,22 +79,51 @@ function resolveStaticDir(): string {
   return path.resolve(here, '../dist-fs');
 }
 
-function serve(options: ServeOptions): void {
-  const notesRoot = path.resolve(expandHome(options.notesDir));
+/**
+ * notes ディレクトリが存在し実ディレクトリであることを検証する。
+ * 問題があればユーザー向けエラーメッセージを、正常なら null を返す。
+ */
+export function validateNotesDir(notesRoot: string): string | null {
   try {
     if (!statSync(notesRoot).isDirectory()) throw new Error('not a directory');
   } catch {
-    console.error(`aze: notes directory not found or not a directory: ${notesRoot}`);
+    return `aze: notes directory not found or not a directory: ${notesRoot}`;
+  }
+  return null;
+}
+
+/**
+ * SPA の build 成果物 (index.html) が staticDir に存在することを検証する。
+ * 無ければユーザー向けエラーメッセージを、正常なら null を返す。
+ */
+export function validateSpaBuilt(staticDir: string): string | null {
+  try {
+    statSync(path.join(staticDir, 'index.html'));
+  } catch {
+    return `aze: SPA assets not found in ${staticDir}. "npm run build:serve" を先に実行してください。`;
+  }
+  return null;
+}
+
+/** server の 'error' イベントが持つ errno code を CLI 向けのメッセージへ変換する。 */
+export function serverErrorMessage(err: NodeJS.ErrnoException, host: string, port: number): string {
+  if (err.code === 'EADDRINUSE') return `aze: port ${port} is already in use`;
+  if (err.code === 'EACCES') return `aze: permission denied to bind ${host}:${port}`;
+  return `aze: server error: ${err.message}`;
+}
+
+export function serve(options: ServeOptions): void {
+  const notesRoot = path.resolve(expandHome(options.notesDir));
+  const notesError = validateNotesDir(notesRoot);
+  if (notesError) {
+    console.error(notesError);
     process.exit(1);
   }
 
   const staticDir = resolveStaticDir();
-  try {
-    statSync(path.join(staticDir, 'index.html'));
-  } catch {
-    console.error(
-      `aze: SPA assets not found in ${staticDir}. "npm run build:serve" を先に実行してください。`
-    );
+  const spaError = validateSpaBuilt(staticDir);
+  if (spaError) {
+    console.error(spaError);
     process.exit(1);
   }
 
@@ -122,13 +151,7 @@ function serve(options: ServeOptions): void {
   server.on('close', () => notesHandler.close());
 
   server.on('error', (err: NodeJS.ErrnoException) => {
-    if (err.code === 'EADDRINUSE') {
-      console.error(`aze: port ${options.port} is already in use`);
-    } else if (err.code === 'EACCES') {
-      console.error(`aze: permission denied to bind ${HOST}:${options.port}`);
-    } else {
-      console.error(`aze: server error: ${err.message}`);
-    }
+    console.error(serverErrorMessage(err, HOST, options.port));
     process.exit(1);
   });
 
@@ -158,4 +181,22 @@ function main(): void {
   process.exit(1);
 }
 
-main();
+/**
+ * このモジュールが CLI エントリとして直接実行されたか判定する。
+ * npm の bin symlink 経由 (process.argv[1] が symlink パス) でも一致するよう
+ * realpath に正規化してから import.meta.url と比較する。import で読み込まれた
+ * 場合 (テスト等) は false となり、副作用の main() を実行しない。
+ */
+function isCliEntry(): boolean {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  try {
+    return import.meta.url === pathToFileURL(realpathSync(entry)).href;
+  } catch {
+    return false;
+  }
+}
+
+if (isCliEntry()) {
+  main();
+}
