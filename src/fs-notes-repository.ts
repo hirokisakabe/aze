@@ -28,6 +28,14 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
 export class FsNotesRepository implements NotesRepository {
   private noteListeners = new Set<(notes: Note[]) => void>();
 
+  constructor() {
+    // subscribe* は app 層で `useRepositorySubscription(notesRepository.subscribeNotes)` のように
+    // メソッド参照として unbound に渡される。IndexedDB driver は `this` を参照しないため動くが、
+    // 本 driver は `this.noteListeners` 等に触れるため、ここで bind して unbound 呼び出しに耐える。
+    this.subscribeNotes = this.subscribeNotes.bind(this);
+    this.subscribeImageAssets = this.subscribeImageAssets.bind(this);
+  }
+
   private async loadNotes(): Promise<Note[]> {
     const { notes } = await requestJson<{ notes: Note[] }>(BASE);
     return notes;
