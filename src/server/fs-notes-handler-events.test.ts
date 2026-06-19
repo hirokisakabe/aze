@@ -5,7 +5,7 @@ import path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { createFsNotesHandler } from '../../server/fs-notes-handler';
+import { createFsNotesHandler } from './fs-notes-handler';
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 

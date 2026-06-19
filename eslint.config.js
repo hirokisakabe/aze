@@ -91,8 +91,9 @@ export default tseslint.config(
   },
   // テストは内部状態への意図的なアクセスやモック注入で any/unbound を多用するため、
   // 型情報ベースの noisy なルールのみ緩和する (no-floating-promises 等の有用な検査は維持)。
+  // テストはソースにコロケーションされ、共有ヘルパは test-support に置かれる。
   {
-    files: ["src/__tests__/**/*.{ts,tsx}"],
+    files: ["src/**/*.test.{ts,tsx}", "src/test-support/**/*.{ts,tsx}"],
     rules: {
       "@typescript-eslint/no-unsafe-call": "off",
       "@typescript-eslint/no-unsafe-member-access": "off",

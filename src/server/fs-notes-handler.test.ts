@@ -5,7 +5,7 @@ import { Readable } from 'node:stream';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { createFsNotesHandler, expandHome, resolveInNotesDir } from '../../server/fs-notes-handler';
+import { createFsNotesHandler, expandHome, resolveInNotesDir } from './fs-notes-handler';
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 

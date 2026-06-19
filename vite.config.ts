@@ -13,11 +13,32 @@ export default defineConfig(({ mode }) => {
     // 本番ビルド / Web 配布版は従来どおり IndexedDB のまま影響を受けない。
     plugins: [react(), ...(useFsDriver ? [fsNotesPlugin({ notesDir: env.AZE_NOTES_DIR })] : [])],
     test: {
-      environment: "jsdom",
-      setupFiles: ["./src/__tests__/setup.ts"],
-      globals: true,
-      include: ["src/**/*.test.{ts,tsx}"],
-      exclude: ["e2e/**"],
+      // 環境はディレクトリではなくファイル名サフィックスで分離する。
+      // `*.dom.test.{ts,tsx}` のみ jsdom + setup を読み込み、それ以外の
+      // `*.test.{ts,tsx}` は node 環境で setup なしに実行する。
+      projects: [
+        {
+          extends: true,
+          test: {
+            name: "node",
+            globals: true,
+            environment: "node",
+            include: ["src/**/*.test.{ts,tsx}"],
+            exclude: ["src/**/*.dom.test.{ts,tsx}", "e2e/**"],
+          },
+        },
+        {
+          extends: true,
+          test: {
+            name: "jsdom",
+            globals: true,
+            environment: "jsdom",
+            setupFiles: ["./src/test-support/setup.ts"],
+            include: ["src/**/*.dom.test.{ts,tsx}"],
+            exclude: ["e2e/**"],
+          },
+        },
+      ],
     },
   };
 });

@@ -4,9 +4,9 @@ import {
   extractAssetIdsFromMarkdown,
   referencedImageAssets,
   rewriteAssetUrlsForExport,
-} from '../../assets';
+} from './assets';
 
-import type { ImageAsset } from '../../data';
+import type { ImageAsset } from './data';
 
 function asset(id: string, filename = `${id}.png`): ImageAsset {
   return {

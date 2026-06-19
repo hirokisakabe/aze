@@ -1,7 +1,7 @@
 import { fireEvent, render } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 
-import { MarkdownPreview } from '../../markdown';
+import { MarkdownPreview } from './markdown';
 
 describe('MarkdownPreview', () => {
   it('見出し h1 に md-h md-h1 クラスが付与される', () => {

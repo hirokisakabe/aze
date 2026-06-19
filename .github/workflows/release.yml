@@ -1,0 +1,40 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          # OIDC Trusted Publishing は Node.js 22.14.0 以上が必須。
+          node-version: 22.14.0
+          registry-url: 'https://registry.npmjs.org'
+          # release ビルドでは依存キャッシュを使わない。
+          package-manager-cache: false
+      # OIDC Trusted Publishing は npm CLI 11.5.1 以上が必須なため、同梱 npm を更新する。
+      - run: npm install -g npm@latest
+      - run: npm ci --legacy-peer-deps
+      - name: Create Release Pull Request or Publish to npm
+        uses: changesets/action@v1
+        with:
+          version: npm run version
+          publish: npm run release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # NODE_AUTH_TOKEN / NPM_TOKEN は設定しない。
+          # 空でも値があると npm が OIDC ではなくトークン認証を試みて失敗するため。
