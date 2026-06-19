@@ -335,6 +335,7 @@ body {
   margin: 0;
   color: var(--ink);
   word-break: break-word;
+  white-space: pre-wrap;
 }
 .fm-list {
   margin: 0;

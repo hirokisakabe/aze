@@ -85,4 +85,32 @@ describe('parseFrontmatter', () => {
     expect(result.entries).toEqual([{ key: 'title', value: 'X' }]);
     expect((result.raw ?? '') + result.body).toBe(content);
   });
+
+  it('値の中や行末に --- を含んでも閉じフェンスを誤検出しない', () => {
+    const content = '---\ntitle: a --- b\nnote: ends ---\n---\nbody';
+    const result = parseFrontmatter(content);
+    expect(result.entries).toEqual([
+      { key: 'title', value: 'a --- b' },
+      { key: 'note', value: 'ends ---' },
+    ]);
+    expect(result.body).toBe('body');
+  });
+
+  it('引用符内のカンマを含むフロー配列を壊さない', () => {
+    const content = '---\ntags: ["x,y", z]\n---\nbody';
+    const result = parseFrontmatter(content);
+    expect(result.entries).toEqual([{ key: 'tags', value: ['x,y', 'z'] }]);
+  });
+
+  it('ネストした mapping を生テキストとして保持する', () => {
+    const content = '---\nmeta:\n  foo: bar\n  baz: qux\n---\nbody';
+    const result = parseFrontmatter(content);
+    expect(result.entries).toEqual([{ key: 'meta', value: 'foo: bar\nbaz: qux' }]);
+  });
+
+  it('ブロックスカラを生テキストとして保持する', () => {
+    const content = '---\ndesc: |\n  line1\n  line2\n---\nbody';
+    const result = parseFrontmatter(content);
+    expect(result.entries).toEqual([{ key: 'desc', value: 'line1\nline2' }]);
+  });
 });

@@ -1,8 +1,10 @@
 // Detect and parse a leading YAML frontmatter block.
 //
 // aze does not interpret specific keys: every entry is treated as an opaque
-// key/value pair. Only scalar and (block or flow) sequence values are parsed;
-// anything else is kept as its raw string so rendering stays generic.
+// key/value pair. Scalar and sequence (block or flow) values are parsed into a
+// string / string[]; any other YAML construct (nested mapping, block scalar,
+// etc.) is preserved as its raw, dedented text so the content stays visible
+// rather than being silently dropped together with the stripped block.
 //
 // The original content is never re-serialized. `raw` holds the verbatim
 // frontmatter block (delimiters included) and `body` the remainder, so
@@ -26,8 +28,14 @@ export interface ParsedFrontmatter {
 }
 
 // A frontmatter block opens with `---` on the very first line and closes with a
-// line that is exactly `---`. Trailing spaces/tabs on the fences are tolerated.
-const FRONTMATTER_RE = /^---[ \t]*\r?\n([\s\S]*?)\r?\n?---[ \t]*(?:\r?\n|$)/;
+// line that is exactly `---`. The closing fence must start on its own line
+// (mandatory `\r?\n` before it) so a `---` appearing inside a value is not
+// mistaken for the closing delimiter. Trailing spaces/tabs on the fences are
+// tolerated.
+const FRONTMATTER_RE = /^---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/;
+// Block scalar indicator after a key, e.g. `|`, `>`, `|-`, `>2`.
+const BLOCK_SCALAR_RE = /^[|>][+-]?\d*$/;
+const SEQUENCE_ITEM_RE = /^\s*-\s+/;
 
 function stripQuotes(value: string): string {
   const trimmed = value.trim();
@@ -41,10 +49,39 @@ function stripQuotes(value: string): string {
   return trimmed;
 }
 
-function parseFlowSequence(value: string): string[] {
-  const inner = value.slice(1, -1).trim();
-  if (inner === '') return [];
-  return inner.split(',').map(stripQuotes);
+// Split a flow sequence body (the text inside `[ ]`) on top-level commas while
+// respecting quoted strings, so `"x,y", z` yields `['x,y', 'z']`.
+function splitFlowItems(inner: string): string[] {
+  if (inner.trim() === '') return [];
+  const items: string[] = [];
+  let quote: string | null = null;
+  let cur = '';
+  for (const ch of inner) {
+    if (quote) {
+      cur += ch;
+      if (ch === quote) quote = null;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+      cur += ch;
+    } else if (ch === ',') {
+      items.push(cur);
+      cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  items.push(cur);
+  return items.map(stripQuotes);
+}
+
+// Strip the common leading indentation from a block of lines and join them,
+// preserving relative structure for opaque rendering.
+function dedent(block: string[]): string {
+  const indents = block
+    .filter((line) => line.trim() !== '')
+    .map((line) => /^\s*/.exec(line)![0].length);
+  const min = indents.length > 0 ? Math.min(...indents) : 0;
+  return block.map((line) => line.slice(min)).join('\n');
 }
 
 function parseInner(inner: string): FrontmatterEntry[] {
@@ -55,25 +92,40 @@ function parseInner(inner: string): FrontmatterEntry[] {
     const line = lines[i];
     i += 1;
     const content = line.trim();
-    // Skip blank lines, comments, and indented lines that are not a key.
+    // Skip blank lines, comments, and indented lines (the latter are consumed
+    // as part of a preceding key's block; any stray one is ignored).
     if (content === '' || content.startsWith('#') || /^\s/.test(line)) continue;
     const colon = line.indexOf(':');
     if (colon === -1) continue;
     const key = line.slice(0, colon).trim();
     if (key === '') continue;
     const rest = line.slice(colon + 1).trim();
-    if (rest === '') {
-      // A bare key may be followed by an indented block sequence.
-      const items: string[] = [];
-      while (i < lines.length && /^\s*-\s+/.test(lines[i])) {
-        items.push(stripQuotes(lines[i].replace(/^\s*-\s+/, '')));
-        i += 1;
+
+    if (rest !== '' && !BLOCK_SCALAR_RE.test(rest)) {
+      // Inline scalar or flow sequence.
+      if (rest.startsWith('[') && rest.endsWith(']')) {
+        entries.push({ key, value: splitFlowItems(rest.slice(1, -1)) });
+      } else {
+        entries.push({ key, value: stripQuotes(rest) });
       }
-      entries.push({ key, value: items.length > 0 ? items : '' });
-    } else if (rest.startsWith('[') && rest.endsWith(']')) {
-      entries.push({ key, value: parseFlowSequence(rest) });
+      continue;
+    }
+
+    // Bare key or block-scalar indicator: gather the following indented block.
+    const blockScalar = BLOCK_SCALAR_RE.test(rest);
+    const block: string[] = [];
+    while (i < lines.length && /^\s+\S/.test(lines[i])) {
+      block.push(lines[i]);
+      i += 1;
+    }
+    if (!blockScalar && block.length > 0 && block.every((l) => SEQUENCE_ITEM_RE.test(l))) {
+      entries.push({ key, value: block.map((l) => stripQuotes(l.replace(SEQUENCE_ITEM_RE, ''))) });
+    } else if (block.length > 0) {
+      // Nested mapping / block scalar / mixed content: keep the raw (dedented)
+      // text so nothing is silently dropped from the view.
+      entries.push({ key, value: dedent(block) });
     } else {
-      entries.push({ key, value: stripQuotes(rest) });
+      entries.push({ key, value: '' });
     }
   }
   return entries;
