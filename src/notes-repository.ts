@@ -1,7 +1,9 @@
 import { liveQuery } from 'dexie';
-import type { ImageAsset, Note } from './data';
+
 import { db } from './db';
 import { FsNotesRepository } from './fs-notes-repository';
+
+import type { ImageAsset, Note } from './data';
 
 export type Unsubscribe = () => void;
 

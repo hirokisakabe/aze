@@ -1,9 +1,6 @@
-import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import JSZip from 'jszip';
-import { buildTree, ancestorsOf, type Note } from './data';
-import { notesRepository, type Unsubscribe } from './notes-repository';
-import { MarkdownPreview } from './markdown';
-import { Sidebar } from './sidebar';
+import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
+
 import {
   assetMarkdownUrl,
   createAssetId,
@@ -13,6 +10,10 @@ import {
   referencedImageAssets,
   rewriteAssetUrlsForExport,
 } from './assets';
+import { buildTree, ancestorsOf, type Note } from './data';
+import { MarkdownPreview } from './markdown';
+import { notesRepository, type Unsubscribe } from './notes-repository';
+import { Sidebar } from './sidebar';
 
 const TODAY = new Intl.DateTimeFormat('sv-SE').format(new Date());
 
@@ -277,7 +278,7 @@ function RenameNoteDialog({ initialPath, onRename, onCancel }: RenameNoteDialogP
               setError('');
             }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.nativeEvent.isComposing) submit();
+              if (e.key === 'Enter' && !e.nativeEvent.isComposing) void submit();
               if (e.key === 'Escape') onCancel();
             }}
           />
@@ -297,8 +298,12 @@ function RenameNoteDialog({ initialPath, onRename, onCancel }: RenameNoteDialogP
 }
 
 export default function App() {
+  // subscribe* は安定した参照を保つため unbound のメソッド参照として渡す
+  // (this を参照する driver は constructor で bind 済み。fs-notes-repository.ts のコメント参照)。
+  /* eslint-disable @typescript-eslint/unbound-method */
   const rawNotes = useRepositorySubscription(notesRepository.subscribeNotes);
   const rawImageAssets = useRepositorySubscription(notesRepository.subscribeImageAssets);
+  /* eslint-enable @typescript-eslint/unbound-method */
   const notes = useMemo(() => rawNotes ?? [], [rawNotes]);
   const imageAssets = useMemo(() => rawImageAssets ?? [], [rawImageAssets]);
   const [currentPath, setCurrentPath] = useState('');
@@ -367,7 +372,7 @@ export default function App() {
   useEffect(() => {
     if (pathInitializedRef.current || notes.length === 0) return;
     pathInitializedRef.current = true;
-    notesRepository.getLastOpenedPath().then((saved) => {
+    void notesRepository.getLastOpenedPath().then((saved) => {
       const path = saved && notes.some((n) => n.path === saved) ? saved : notes[0].path;
       setCurrentPath(path);
       setExpanded(new Set(ancestorsOf(path)));
@@ -376,7 +381,7 @@ export default function App() {
 
   useEffect(() => {
     if (!currentPath) return;
-    notesRepository.setLastOpenedPath(currentPath);
+    void notesRepository.setLastOpenedPath(currentPath);
   }, [currentPath]);
 
   const enterEdit = useCallback(() => {
@@ -494,7 +499,7 @@ export default function App() {
       setCreating(false);
       const exists = await notesRepository.getNote(path);
       if (exists) {
-        openNote(path);
+        void openNote(path);
         return;
       }
       const base = path.split('/').pop()!.replace(/\.md$/, '');
@@ -606,11 +611,11 @@ export default function App() {
       } else if (mode === 'edit') {
         if ((e.metaKey || e.ctrlKey) && (e.key === 's' || e.key === 'Enter')) {
           e.preventDefault();
-          saveEdit();
+          void saveEdit();
         }
         if (e.key === 'Escape') {
           e.preventDefault();
-          cancelEdit();
+          void cancelEdit();
         }
       }
     };
@@ -676,7 +681,7 @@ export default function App() {
                       const files = e.clipboardData.files;
                       if (Array.from(files).some((file) => file.type.startsWith('image/'))) {
                         e.preventDefault();
-                        uploadImageFiles(files);
+                        void uploadImageFiles(files);
                       }
                     }}
                     onDragEnter={(e) => {
@@ -703,7 +708,7 @@ export default function App() {
                       setIsDroppingImage(false);
                       if (e.dataTransfer.files.length === 0) return;
                       e.preventDefault();
-                      uploadImageFiles(e.dataTransfer.files);
+                      void uploadImageFiles(e.dataTransfer.files);
                     }}
                     onKeyDown={(e) => {
                       if (e.key !== 'Tab') return;
@@ -722,7 +727,7 @@ export default function App() {
                   accept="image/*"
                   multiple
                   onChange={(e) => {
-                    if (e.target.files) uploadImageFiles(e.target.files);
+                    if (e.target.files) void uploadImageFiles(e.target.files);
                     e.target.value = '';
                   }}
                 />

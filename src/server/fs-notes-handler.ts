@@ -1,8 +1,10 @@
-import type { IncomingMessage, ServerResponse } from 'node:http';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
 import { createNotesWatcher, type NotesWatcher } from './notes-watcher';
+
+import type { IncomingMessage, ServerResponse } from 'node:http';
 
 /**
  * filesystem notes backend の framework 非依存ハンドラ。

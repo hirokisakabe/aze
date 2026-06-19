@@ -1,7 +1,9 @@
-import { beforeEach, expect } from 'vitest';
 import { waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { beforeEach, expect } from 'vitest';
+
 import { db } from '../db';
+
 import type { Note } from '../data';
 
 export const NOTE_A: Note = {

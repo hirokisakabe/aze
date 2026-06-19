@@ -1,6 +1,7 @@
+import fs from 'fs';
+
 import { test, expect } from '@playwright/test';
 import JSZip from 'jszip';
-import fs from 'fs';
 
 async function createNote(page: import('@playwright/test').Page, path: string) {
   await page.getByLabel('新規ノート').click();
@@ -149,7 +150,7 @@ test('エクスポートボタンで zip がダウンロードされる', async 
   const path = await download.path();
   expect(path).not.toBeNull();
 
-  const data = fs.readFileSync(path!);
+  const data = fs.readFileSync(path);
   const zip = await JSZip.loadAsync(data);
   expect(await zip.file('export-note.md')?.async('string')).toBe('# Export Note\n\nExport me.');
   expect(await zip.file('daily/2024-06-02.md')?.async('string')).toBe(
@@ -192,7 +193,7 @@ test('アップロードした画像はリロード後も表示され、エク�
   const path = await download.path();
   expect(path).not.toBeNull();
 
-  const data = fs.readFileSync(path!);
+  const data = fs.readFileSync(path);
   const zip = await JSZip.loadAsync(data);
   const exportedMarkdown = await zip.file('image-note.md')?.async('string');
   expect(exportedMarkdown).toMatch(/!\[diagram\]\(assets\/.+-diagram\.png\)/);

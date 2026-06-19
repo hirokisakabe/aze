@@ -1,10 +1,13 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
-import type { IncomingMessage, ServerResponse } from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
+
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+
 import { createFsNotesHandler, expandHome, resolveInNotesDir } from './fs-notes-handler';
+
+import type { IncomingMessage, ServerResponse } from 'node:http';
 
 const NOTES_DIR = path.resolve('/tmp/aze-notes');
 

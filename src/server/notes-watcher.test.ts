@@ -1,7 +1,9 @@
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync, renameSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+
 import { createNotesWatcher, type NotesWatcher } from './notes-watcher';
 
 // fs.watch の発火はプラットフォーム / タイミング依存なので、debounce は短く、待ちは緩めにする。

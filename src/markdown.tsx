@@ -1,13 +1,15 @@
 import { Children, createContext, isValidElement, useContext } from 'react';
-import type { ReactElement, ReactNode } from 'react';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import remarkGemoji from 'remark-gemoji';
-import type { Components } from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
 import { assetIdFromMarkdownUrl } from './assets';
 import { parseFrontmatter } from './frontmatter';
+
 import type { FrontmatterEntry } from './frontmatter';
+import type { ReactElement, ReactNode } from 'react';
+import type { Components } from 'react-markdown';
 
 const InsidePreContext = createContext(false);
 
