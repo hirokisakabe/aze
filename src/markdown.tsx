@@ -5,8 +5,35 @@ import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import type { Components } from 'react-markdown';
 import { assetIdFromMarkdownUrl } from './assets';
+import { parseFrontmatter } from './frontmatter';
+import type { FrontmatterEntry } from './frontmatter';
 
 const InsidePreContext = createContext(false);
+
+function FrontmatterPanel({ entries }: { entries: FrontmatterEntry[] }) {
+  return (
+    <dl className="md-frontmatter">
+      {entries.map(({ key, value }) => (
+        <div className="fm-row" key={key}>
+          <dt className="fm-key">{key}</dt>
+          <dd className="fm-value">
+            {Array.isArray(value) ? (
+              <ul className="fm-list">
+                {value.map((item, idx) => (
+                  <li className="fm-item" key={idx}>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              value
+            )}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
 
 function Pre({ children }: { children?: ReactNode }) {
   return (
@@ -69,6 +96,7 @@ interface MarkdownPreviewProps {
 }
 
 export function MarkdownPreview({ content, resolveAssetUrl }: MarkdownPreviewProps) {
+  const { body, entries } = parseFrontmatter(content);
   const components: Components = {
     h1: ({ children }) => <h1 className="md-h md-h1">{children}</h1>,
     h2: ({ children }) => <h2 className="md-h md-h2">{children}</h2>,
@@ -117,12 +145,15 @@ export function MarkdownPreview({ content, resolveAssetUrl }: MarkdownPreviewPro
   };
 
   return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm, remarkBreaks]}
-      components={components}
-      urlTransform={transformMarkdownUrl}
-    >
-      {content}
-    </ReactMarkdown>
+    <>
+      {entries.length > 0 && <FrontmatterPanel entries={entries} />}
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkBreaks]}
+        components={components}
+        urlTransform={transformMarkdownUrl}
+      >
+        {body}
+      </ReactMarkdown>
+    </>
   );
 }
