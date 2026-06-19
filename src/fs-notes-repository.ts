@@ -3,14 +3,14 @@ import type { NotesRepository, Unsubscribe } from './notes-repository';
 
 /**
  * filesystem driver (最小実験版)。`VITE_STORAGE_DRIVER=fs` の時に選択され、dev サーバーに
- * 同居する `/api/notes` middleware (vite-fs-notes-plugin) 経由で vault の .md を読み書きする。
+ * 同居する `/api/notes` middleware (vite-fs-notes-plugin) 経由で notes ディレクトリの .md を読み書きする。
  *
  * スコープ (issue #78 の最小実験):
  * - notes の read / list / create / save / delete / rename のみ対応する。
  * - 画像 (imageAssets) と wikilink は未対応。画像系メソッドは no-op / 空配列を返す。
  * - 別プロセス (Claude Code 等) の外部編集は `/api/notes/events` (SSE) を購読して auto-reload する
  *   (issue #87)。SSE が使えない環境 (EventSource 不在) では自アプリ内の編集後のみ再 fetch して通知する。
- * - lastOpenedPath は vault を汚さないよう localStorage に保持する (UI state であり vault の中身ではない)。
+ * - lastOpenedPath は notes ディレクトリを汚さないよう localStorage に保持する (UI state でありファイルの中身ではない)。
  */
 
 const BASE = '/api/notes';

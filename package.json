@@ -1,7 +1,7 @@
 {
   "name": "aze-cli",
   "version": "0.1.0",
-  "description": "ローカルの Markdown vault をブラウザの aze エディタで編集する CLI (aze serve)",
+  "description": "ローカルの Markdown ディレクトリをブラウザの aze エディタで編集する CLI (aze serve)",
   "type": "module",
   "bin": {
     "aze": "dist-cli/aze.js"
@@ -13,9 +13,7 @@
   "keywords": [
     "cli",
     "markdown",
-    "vault",
     "editor",
-    "obsidian",
     "notes"
   ],
   "homepage": "https://github.com/hirokisakabe/aze#readme",

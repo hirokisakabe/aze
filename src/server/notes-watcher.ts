@@ -3,7 +3,7 @@ import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 
 /**
- * vault root 配下を再帰的に watch し、.md の変更 (作成 / 編集 / 削除 / リネーム) を
+ * notes ディレクトリ配下を再帰的に watch し、.md の変更 (作成 / 編集 / 削除 / リネーム) を
  * debounce して購読者へ通知する (issue #87)。
  *
  * 実装メモ:
@@ -21,17 +21,17 @@ import path from 'node:path';
 const IGNORED_DIRS = new Set(['node_modules']);
 const DEFAULT_DEBOUNCE_MS = 150;
 
-export interface VaultWatcher {
+export interface NotesWatcher {
   /** 変更通知を購読する。返り値で解除する。 */
   subscribe(onChange: () => void): () => void;
   /** すべての watcher / timer を解放する。以降は通知しない。 */
   close(): void;
 }
 
-export function createVaultWatcher(
-  vaultRoot: string,
+export function createNotesWatcher(
+  notesRoot: string,
   options: { debounceMs?: number } = {}
-): VaultWatcher {
+): NotesWatcher {
   const debounceMs = options.debounceMs ?? DEFAULT_DEBOUNCE_MS;
   const listeners = new Set<() => void>();
   const watchers = new Map<string, FSWatcher>();
@@ -102,7 +102,7 @@ export function createVaultWatcher(
   const reconcile = async (): Promise<void> => {
     if (closed) return;
     const want = new Set<string>();
-    await collectDirs(vaultRoot, want);
+    await collectDirs(notesRoot, want);
     if (closed) return;
     for (const dir of want) {
       if (!watchers.has(dir)) addWatcher(dir);

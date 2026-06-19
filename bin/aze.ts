@@ -6,7 +6,7 @@ import sirv from 'sirv';
 import { createFsNotesHandler, expandHome } from '../src/server/fs-notes-handler';
 
 /**
- * `aze serve <vault>` CLI エントリ (issue #88)。
+ * `aze serve <notes-dir>` CLI エントリ (issue #88)。
  *
  * build 済み静的 SPA (dist-fs) を軽量 Node サーバーで配信しつつ、`/api/notes` を fs
  * ハンドラ (src/server/fs-notes-handler.ts、dev plugin と共有) に繋ぐ。サーバーは
@@ -18,22 +18,22 @@ const DEFAULT_PORT = 4321;
 const API_PREFIX = '/api/notes';
 
 interface ServeOptions {
-  vault: string;
+  notesDir: string;
   port: number;
 }
 
 function printUsage(): void {
-  console.log(`aze serve <vault> [--port <port>]
+  console.log(`aze serve <notes-dir> [--port <port>]
 
-ローカルの Markdown vault を aze エディタで編集する (127.0.0.1 のみ・ネットワーク非公開)。
+ローカルの Markdown ディレクトリを aze エディタで編集する (127.0.0.1 のみ・ネットワーク非公開)。
 
-  <vault>          vault root ディレクトリ (~ 展開対応)
+  <notes-dir>      notes ディレクトリ (~ 展開対応)
   -p, --port       待ち受けポート (default: ${DEFAULT_PORT})
   -h, --help       このヘルプを表示`);
 }
 
 function parseServeArgs(argv: string[]): ServeOptions {
-  let vault: string | undefined;
+  let notesDir: string | undefined;
   let port = DEFAULT_PORT;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -44,16 +44,16 @@ function parseServeArgs(argv: string[]): ServeOptions {
     } else if (arg === '--help' || arg === '-h') {
       printUsage();
       process.exit(0);
-    } else if (!arg.startsWith('-') && vault === undefined) {
-      vault = arg;
+    } else if (!arg.startsWith('-') && notesDir === undefined) {
+      notesDir = arg;
     } else {
       console.error(`aze: unknown argument "${arg}"`);
       printUsage();
       process.exit(1);
     }
   }
-  if (!vault) {
-    console.error('aze: <vault> is required');
+  if (!notesDir) {
+    console.error('aze: <notes-dir> is required');
     printUsage();
     process.exit(1);
   }
@@ -61,7 +61,7 @@ function parseServeArgs(argv: string[]): ServeOptions {
     console.error(`aze: invalid --port "${port}"`);
     process.exit(1);
   }
-  return { vault, port };
+  return { notesDir, port };
 }
 
 /** req.url から `/api/notes` プレフィックスを除き、fs ハンドラが期待する相対パスにする。 */
@@ -78,11 +78,11 @@ function resolveStaticDir(): string {
 }
 
 function serve(options: ServeOptions): void {
-  const vaultRoot = path.resolve(expandHome(options.vault));
+  const notesRoot = path.resolve(expandHome(options.notesDir));
   try {
-    if (!statSync(vaultRoot).isDirectory()) throw new Error('not a directory');
+    if (!statSync(notesRoot).isDirectory()) throw new Error('not a directory');
   } catch {
-    console.error(`aze: vault not found or not a directory: ${vaultRoot}`);
+    console.error(`aze: notes directory not found or not a directory: ${notesRoot}`);
     process.exit(1);
   }
 
@@ -96,7 +96,7 @@ function serve(options: ServeOptions): void {
     process.exit(1);
   }
 
-  const notesHandler = createFsNotesHandler({ vaultRoot });
+  const notesHandler = createFsNotesHandler({ notesRoot });
   const serveStatic = sirv(staticDir, { single: true, dev: false, etag: true });
 
   const server = http.createServer((req, res) => {
@@ -133,7 +133,7 @@ function serve(options: ServeOptions): void {
   // 127.0.0.1 にのみバインドし、ネットワークへは公開しない。
   server.listen(options.port, HOST, () => {
     console.log(`aze serve → http://${HOST}:${options.port}`);
-    console.log(`  vault: ${vaultRoot}`);
+    console.log(`  notes: ${notesRoot}`);
   });
 }
 

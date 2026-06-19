@@ -2,28 +2,28 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync, renameSync } from 'node:
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createVaultWatcher, type VaultWatcher } from '../../server/vault-watcher';
+import { createNotesWatcher, type NotesWatcher } from '../../server/notes-watcher';
 
 // fs.watch の発火はプラットフォーム / タイミング依存なので、debounce は短く、待ちは緩めにする。
 const DEBOUNCE_MS = 10;
 const WAIT_TIMEOUT = 3000;
 
-describe('createVaultWatcher', () => {
-  let vault: string;
-  let watcher: VaultWatcher | null;
+describe('createNotesWatcher', () => {
+  let notesDir: string;
+  let watcher: NotesWatcher | null;
 
   beforeEach(() => {
-    vault = mkdtempSync(path.join(os.tmpdir(), 'aze-watch-'));
-    writeFileSync(path.join(vault, 'hello.md'), '# Hello\n');
-    mkdirSync(path.join(vault, 'sub'));
-    writeFileSync(path.join(vault, 'sub', 'nested.md'), '# Nested\n');
+    notesDir = mkdtempSync(path.join(os.tmpdir(), 'aze-watch-'));
+    writeFileSync(path.join(notesDir, 'hello.md'), '# Hello\n');
+    mkdirSync(path.join(notesDir, 'sub'));
+    writeFileSync(path.join(notesDir, 'sub', 'nested.md'), '# Nested\n');
     watcher = null;
   });
 
   afterEach(() => {
     watcher?.close();
     watcher = null;
-    rmSync(vault, { recursive: true, force: true });
+    rmSync(notesDir, { recursive: true, force: true });
   });
 
   /** onChange が呼ばれるまで待つ。fs イベントの取りこぼしに備え操作を繰り返し試みる。 */
@@ -43,7 +43,7 @@ describe('createVaultWatcher', () => {
         clearInterval(retry);
         resolve();
       };
-      watcher = createVaultWatcher(vault, { debounceMs: DEBOUNCE_MS });
+      watcher = createNotesWatcher(notesDir, { debounceMs: DEBOUNCE_MS });
       const unsubscribe = watcher.subscribe(() => {
         unsubscribe();
         finish();
@@ -56,20 +56,20 @@ describe('createVaultWatcher', () => {
 
   it('既存 .md の編集を通知する', async () => {
     await waitForChange(() =>
-      writeFileSync(path.join(vault, 'hello.md'), `# Edited ${Date.now()}\n`)
+      writeFileSync(path.join(notesDir, 'hello.md'), `# Edited ${Date.now()}\n`)
     );
   });
 
   it('新規 .md の作成を通知する', async () => {
     let i = 0;
-    await waitForChange(() => writeFileSync(path.join(vault, `created-${i++}.md`), '# New\n'));
+    await waitForChange(() => writeFileSync(path.join(notesDir, `created-${i++}.md`), '# New\n'));
   });
 
   it('.md の削除を通知する', async () => {
     // 削除は 1 度しか試せないので、別ファイルを毎回作っては消すことで再試行可能にする。
     let i = 0;
     await waitForChange(() => {
-      const p = path.join(vault, `tmp-${i++}.md`);
+      const p = path.join(notesDir, `tmp-${i++}.md`);
       writeFileSync(p, 'x');
       rmSync(p, { force: true });
     });
@@ -77,14 +77,14 @@ describe('createVaultWatcher', () => {
 
   it('サブディレクトリ内の編集を通知する', async () => {
     await waitForChange(() =>
-      writeFileSync(path.join(vault, 'sub', 'nested.md'), `# Edited ${Date.now()}\n`)
+      writeFileSync(path.join(notesDir, 'sub', 'nested.md'), `# Edited ${Date.now()}\n`)
     );
   });
 
   it('新規サブディレクトリの作成を通知する', async () => {
     let i = 0;
     await waitForChange(() => {
-      const dir = path.join(vault, `newdir-${i++}`);
+      const dir = path.join(notesDir, `newdir-${i++}`);
       mkdirSync(dir);
       writeFileSync(path.join(dir, 'note.md'), '# In new dir\n');
     });
@@ -93,14 +93,14 @@ describe('createVaultWatcher', () => {
   it('リネームを通知する', async () => {
     let i = 0;
     await waitForChange(() => {
-      const from = path.join(vault, `rename-src-${i}.md`);
+      const from = path.join(notesDir, `rename-src-${i}.md`);
       writeFileSync(from, 'x');
-      renameSync(from, path.join(vault, `rename-dst-${i++}.md`));
+      renameSync(from, path.join(notesDir, `rename-dst-${i++}.md`));
     });
   });
 
   it('close 後は通知しない', async () => {
-    watcher = createVaultWatcher(vault, { debounceMs: DEBOUNCE_MS });
+    watcher = createNotesWatcher(notesDir, { debounceMs: DEBOUNCE_MS });
     let calls = 0;
     watcher.subscribe(() => {
       calls += 1;
@@ -109,13 +109,13 @@ describe('createVaultWatcher', () => {
     await new Promise((r) => setTimeout(r, 200));
     watcher.close();
     const before = calls;
-    writeFileSync(path.join(vault, 'after-close.md'), '# x\n');
+    writeFileSync(path.join(notesDir, 'after-close.md'), '# x\n');
     await new Promise((r) => setTimeout(r, 300));
     expect(calls).toBe(before);
   });
 
   it('unsubscribe した listener には通知しない', async () => {
-    watcher = createVaultWatcher(vault, { debounceMs: DEBOUNCE_MS });
+    watcher = createNotesWatcher(notesDir, { debounceMs: DEBOUNCE_MS });
     let calls = 0;
     const unsubscribe = watcher.subscribe(() => {
       calls += 1;
@@ -123,26 +123,26 @@ describe('createVaultWatcher', () => {
     await new Promise((r) => setTimeout(r, 200));
     unsubscribe();
     const before = calls;
-    writeFileSync(path.join(vault, 'after-unsub.md'), '# x\n');
+    writeFileSync(path.join(notesDir, 'after-unsub.md'), '# x\n');
     await new Promise((r) => setTimeout(r, 300));
     expect(calls).toBe(before);
   });
 
   it('削除されたサブディレクトリの watcher は解放される (再生成しても通知が壊れない)', async () => {
     // reconcile による watcher 集合の追従を間接的に確認する。
-    watcher = createVaultWatcher(vault, { debounceMs: DEBOUNCE_MS });
+    watcher = createNotesWatcher(notesDir, { debounceMs: DEBOUNCE_MS });
     await new Promise((r) => setTimeout(r, 200));
-    rmSync(path.join(vault, 'sub'), { recursive: true, force: true });
+    rmSync(path.join(notesDir, 'sub'), { recursive: true, force: true });
     await new Promise((r) => setTimeout(r, 200));
     // sub 削除後でも root の変更は引き続き通知される。
     await waitForChangeOn(watcher, () =>
-      writeFileSync(path.join(vault, 'after-rmdir.md'), `# ${Date.now()}\n`)
+      writeFileSync(path.join(notesDir, 'after-rmdir.md'), `# ${Date.now()}\n`)
     );
   });
 });
 
 /** 指定 watcher に subscribe し、onChange を待つヘルパ (既存 watcher を再利用するケース用)。 */
-function waitForChangeOn(watcher: VaultWatcher, fire: () => void): Promise<void> {
+function waitForChangeOn(watcher: NotesWatcher, fire: () => void): Promise<void> {
   return new Promise((resolve, reject) => {
     let done = false;
     const timer = setTimeout(() => {
