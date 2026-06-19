@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-`aze` is primarily a CLI (`aze serve`) that serves a Vite + React + TypeScript SPA over a lightweight Node server and edits a local Markdown directory through `/api/notes`. The CLI entry is `bin/aze.ts` (bundled to `dist-cli/aze.js`); the fs-driver SPA is built to `dist-fs/`; the `/api/notes` middleware lives in `vite-fs-notes-plugin.ts`. App source lives in `src/`, with the entry at `src/main.tsx` and app-level UI in `src/app.tsx`. Shared modules include `src/data.ts`, `src/db.ts`, `src/markdown.tsx`, and `src/sidebar.tsx`. Unit and integration tests are under `src/__tests__/`, split into `unit/` and `integration/`. Playwright tests live in `e2e/`. Build output (`dist-cli/`, `dist-fs/`, `dist/`) is generated and should not be edited directly.
+`aze` is primarily a CLI (`aze serve`) that serves a Vite + React + TypeScript SPA over a lightweight Node server and edits a local Markdown directory through `/api/notes`. The CLI entry is `bin/aze.ts` (bundled to `dist-cli/aze.js`); the fs-driver SPA is built to `dist-fs/`; the `/api/notes` middleware lives in `vite-fs-notes-plugin.ts`. App source lives in `src/`, with the entry at `src/main.tsx` and app-level UI in `src/app.tsx`. Shared modules include `src/data.ts`, `src/db.ts`, `src/markdown.tsx`, and `src/sidebar.tsx`. Tests are colocated next to their source (e.g. `src/data.test.ts`, `src/markdown.dom.test.tsx`, `src/server/fs-notes-handler.test.ts`); shared test helpers and the jsdom setup live in `src/test-support/`. Playwright tests live in `e2e/`. Build output (`dist-cli/`, `dist-fs/`, `dist/`) is generated and should not be edited directly.
 
 ## Build, Test, and Development Commands
 
@@ -25,7 +25,13 @@ Use TypeScript and React function components. Follow Prettier settings: 2-space 
 
 ## Testing Guidelines
 
-Use Vitest with jsdom for `src/**/*.test.{ts,tsx}`. Setup is in `src/__tests__/setup.ts`, with React Testing Library for component behavior. Keep fast logic tests in `src/__tests__/unit/`, rendered flows in `src/__tests__/integration/`, and browser workflows in `e2e/*.spec.ts`. Run `npm test`, `npm run typecheck`, and `npm run lint` before submitting; add `npm run test:e2e` for UI behavior changes.
+Tests are **colocated** with the source they cover rather than gathered under a separate folder—the file's location states its responsibility (`src/server/*.test.ts` is server-side, `src/markdown.dom.test.tsx` is a component). The execution environment is encoded in the **filename suffix**, not the directory:
+
+- `*.dom.test.{ts,tsx}` runs under **jsdom** and loads `src/test-support/setup.ts` (fake-indexeddb, jest-dom matchers). Use it for tests that render React or touch the DOM.
+- `*.test.{ts,tsx}` runs under **node** with no setup file. Use it for pure logic and server/fs tests so they stay fast and free of jsdom globals.
+- `*.spec.ts` under `e2e/` are Playwright browser workflows.
+
+Vitest separates these via `test.projects` in `vite.config.ts` (a `node` project and a `jsdom` project), so `npm test` runs both. Shared fixtures and helpers live in `src/test-support/`. Use React Testing Library for component behavior. Run `npm test`, `npm run typecheck`, and `npm run lint` before submitting; add `npm run test:e2e` for UI behavior changes.
 
 ## Commit & Pull Request Guidelines
 
