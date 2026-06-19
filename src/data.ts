@@ -5,6 +5,15 @@ export interface Note {
   body: string;
 }
 
+export interface ImageAsset {
+  id: string;
+  notePath: string;
+  filename: string;
+  mimeType: string;
+  blob: Blob;
+  created: string;
+}
+
 export interface TreeNode {
   name: string;
   path: string;
