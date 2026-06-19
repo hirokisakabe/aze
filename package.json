@@ -11,12 +11,12 @@
     "dist-fs"
   ],
   "keywords": [
+    "cli",
     "markdown",
-    "notes",
     "vault",
-    "obsidian",
     "editor",
-    "cli"
+    "obsidian",
+    "notes"
   ],
   "homepage": "https://github.com/hirokisakabe/aze#readme",
   "repository": {
