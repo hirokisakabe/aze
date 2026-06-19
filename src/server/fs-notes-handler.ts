@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { createVaultWatcher, type VaultWatcher } from './vault-watcher';
 
 /**
  * filesystem notes backend の framework 非依存ハンドラ。
@@ -16,6 +17,7 @@ import path from 'node:path';
  * - `PUT    /one`           → { note: Note }     (body: Note。作成 or 上書き)
  * - `DELETE /one?path=...`  → { ok: true }
  * - `POST   /rename`        → { ok: true }       (body: { oldPath, newPath })
+ * - `GET    /events`        → text/event-stream  (vault 外部編集の auto-reload 用 SSE。issue #87)
  *
  * 制約:
  * - 画像 / wikilink は未対応 (notes のみ)。
@@ -179,16 +181,88 @@ async function handle(req: IncomingMessage, res: ServerResponse, vaultRoot: stri
   sendJson(res, 404, { error: `unhandled ${method} ${pathname}` });
 }
 
+const SSE_KEEPALIVE_MS = 30_000;
+
 /**
- * vault root を束縛した `/api/notes` ハンドラを生成する。返り値の handler は
- * 処理中の例外を捕捉し 500 (JSON) で応答するため、呼び出し側は単に呼ぶだけでよい。
+ * `createFsNotesHandler` の返り値。req/res を捌く関数本体に `close()` を生やしたもので、
+ * 呼び出し側はこれまで通り `handler(req, res)` として呼べる。`close()` はサーバー停止時に
+ * file watcher を確実に解放したい場合に呼ぶ (省略しても最後の SSE 接続切断で解放される)。
  */
-export function createFsNotesHandler(options: {
-  vaultRoot: string;
-}): (req: IncomingMessage, res: ServerResponse) => Promise<void> {
+export interface FsNotesHandler {
+  (req: IncomingMessage, res: ServerResponse): Promise<void>;
+  close(): void;
+}
+
+/**
+ * vault root を束縛した `/api/notes` ハンドラを生成する。
+ *
+ * - 通常の REST 系 (`/`, `/one`, `/rename`) は処理中の例外を捕捉し 500 (JSON) で応答する。
+ * - `/events` は SSE。vault を file watch し、外部編集を接続中のブラウザへ push する (auto-reload)。
+ *   watcher は SSE 初回接続で lazy に生成し、最後の接続が切れたら解放する (購読リークを防ぐ)。
+ */
+export function createFsNotesHandler(options: { vaultRoot: string }): FsNotesHandler {
   const { vaultRoot } = options;
-  return (req, res) =>
-    handle(req, res, vaultRoot).catch((err) => {
+  let watcher: VaultWatcher | null = null;
+  let subscriberCount = 0;
+
+  function handleEvents(req: IncomingMessage, res: ServerResponse): void {
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders?.();
+    // 切断検知が遅れる環境向けに再接続間隔を提示し、初回ハンドシェイクを 1 行送る。
+    res.write('retry: 3000\n\n');
+
+    if (!watcher) watcher = createVaultWatcher(vaultRoot);
+    subscriberCount += 1;
+
+    const send = (chunk: string): void => {
+      if (res.writableEnded) return;
+      try {
+        res.write(chunk);
+      } catch {
+        // 接続が既に切れている場合は cleanup 側で解放されるため無視する。
+      }
+    };
+    const unsubscribe = watcher.subscribe(() => send('event: change\ndata: {}\n\n'));
+    // プロキシ / ブラウザに接続を生かし続けさせる keep-alive ping (コメント行)。
+    const keepAlive = setInterval(() => send(': ping\n\n'), SSE_KEEPALIVE_MS);
+
+    let cleanedUp = false;
+    const cleanup = (): void => {
+      if (cleanedUp) return;
+      cleanedUp = true;
+      clearInterval(keepAlive);
+      unsubscribe();
+      subscriberCount -= 1;
+      if (subscriberCount === 0 && watcher) {
+        watcher.close();
+        watcher = null;
+      }
+    };
+    req.on('close', cleanup);
+    res.on('close', cleanup);
+  }
+
+  const handler = ((req: IncomingMessage, res: ServerResponse): Promise<void> => {
+    const url = new URL(req.url ?? '/', 'http://localhost');
+    if (url.pathname === '/events' && (req.method ?? 'GET') === 'GET') {
+      handleEvents(req, res);
+      return Promise.resolve();
+    }
+    return handle(req, res, vaultRoot).catch((err) => {
       sendJson(res, 500, { error: String(err) });
     });
+  }) as FsNotesHandler;
+
+  handler.close = (): void => {
+    if (watcher) {
+      watcher.close();
+      watcher = null;
+    }
+    subscriberCount = 0;
+  };
+
+  return handler;
 }
