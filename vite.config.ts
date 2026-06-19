@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => {
             name: "node",
             globals: true,
             environment: "node",
-            include: ["src/**/*.test.{ts,tsx}"],
+            include: ["src/**/*.test.{ts,tsx}", "bin/**/*.test.ts"],
             exclude: ["src/**/*.dom.test.{ts,tsx}", "e2e/**"],
           },
         },
