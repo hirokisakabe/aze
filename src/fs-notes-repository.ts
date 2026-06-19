@@ -113,13 +113,15 @@ export class FsNotesRepository implements NotesRepository {
     return note;
   }
 
+  // localStorage アクセスは SecurityError / QuotaExceededError を投げうる。async 同様に
+  // 例外を同期 throw ではなく reject として呼び出し側に伝えるため then 内で評価する
+  // (呼び出し元は fire-and-forget で effect を壊さない前提)。
   getLastOpenedPath(): Promise<string | undefined> {
-    return Promise.resolve(localStorage.getItem(LAST_OPENED_KEY) ?? undefined);
+    return Promise.resolve().then(() => localStorage.getItem(LAST_OPENED_KEY) ?? undefined);
   }
 
   setLastOpenedPath(path: string): Promise<void> {
-    localStorage.setItem(LAST_OPENED_KEY, path);
-    return Promise.resolve();
+    return Promise.resolve().then(() => localStorage.setItem(LAST_OPENED_KEY, path));
   }
 
   async createNote(note: Note): Promise<void> {
