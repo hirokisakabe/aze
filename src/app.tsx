@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import JSZip from 'jszip';
 import { buildTree, ancestorsOf, type Note } from './data';
-import { db } from './db';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { notesRepository, type Unsubscribe } from './notes-repository';
 import { MarkdownPreview } from './markdown';
 import { Sidebar } from './sidebar';
 import {
@@ -159,20 +158,19 @@ function parseNotePath(path: string): ParsedNotePath {
   return { path: nextPath, error: '' };
 }
 
-async function deleteUnreferencedImageAssets(notePath: string, body: string) {
-  const referencedIds = new Set(extractAssetIdsFromMarkdown(body));
-  const assets = await db.imageAssets.where('notePath').equals(notePath).toArray();
-  const staleIds = assets.filter((asset) => !referencedIds.has(asset.id)).map((asset) => asset.id);
-  if (staleIds.length > 0) {
-    await db.imageAssets.bulkDelete(staleIds);
-  }
+function useRepositorySubscription<T>(
+  subscribe: (listener: (value: T) => void) => Unsubscribe
+): T | undefined {
+  const [value, setValue] = useState<T>();
+  useEffect(() => subscribe(setValue), [subscribe]);
+  return value;
 }
 
 async function persistNoteBody(note: Note, body: string) {
-  await db.transaction('rw', db.notes, db.imageAssets, async () => {
-    await db.notes.put({ ...note, body, updated: TODAY });
-    await deleteUnreferencedImageAssets(note.path, body);
-  });
+  await notesRepository.saveNote(
+    { ...note, body, updated: TODAY },
+    extractAssetIdsFromMarkdown(body)
+  );
 }
 
 interface NewNoteDialogProps {
@@ -299,8 +297,8 @@ function RenameNoteDialog({ initialPath, onRename, onCancel }: RenameNoteDialogP
 }
 
 export default function App() {
-  const rawNotes = useLiveQuery(() => db.notes.toArray(), []);
-  const rawImageAssets = useLiveQuery(() => db.imageAssets.toArray(), []);
+  const rawNotes = useRepositorySubscription(notesRepository.subscribeNotes);
+  const rawImageAssets = useRepositorySubscription(notesRepository.subscribeImageAssets);
   const notes = useMemo(() => rawNotes ?? [], [rawNotes]);
   const imageAssets = useMemo(() => rawImageAssets ?? [], [rawImageAssets]);
   const [currentPath, setCurrentPath] = useState('');
@@ -369,8 +367,7 @@ export default function App() {
   useEffect(() => {
     if (pathInitializedRef.current || notes.length === 0) return;
     pathInitializedRef.current = true;
-    db.settings.get('lastOpenedPath').then((setting) => {
-      const saved = setting?.value;
+    notesRepository.getLastOpenedPath().then((saved) => {
       const path = saved && notes.some((n) => n.path === saved) ? saved : notes[0].path;
       setCurrentPath(path);
       setExpanded(new Set(ancestorsOf(path)));
@@ -379,7 +376,7 @@ export default function App() {
 
   useEffect(() => {
     if (!currentPath) return;
-    db.settings.put({ key: 'lastOpenedPath', value: currentPath });
+    notesRepository.setLastOpenedPath(currentPath);
   }, [currentPath]);
 
   const enterEdit = useCallback(() => {
@@ -466,14 +463,12 @@ export default function App() {
             markdown: `![${readableAltText(file.name)}](${assetMarkdownUrl(id)})`,
           };
         });
-        await db.transaction('rw', db.imageAssets, async () => {
-          await db.imageAssets.bulkAdd(
-            assets.map(({ markdown, ...asset }) => {
-              void markdown;
-              return asset;
-            })
-          );
-        });
+        await notesRepository.addImageAssets(
+          assets.map(({ markdown, ...asset }) => {
+            void markdown;
+            return asset;
+          })
+        );
         const markdownLines = assets.map((asset) => asset.markdown);
         insertMarkdownAtCursor(markdownLines.join('\n'));
       } catch {
@@ -485,7 +480,10 @@ export default function App() {
 
   const cancelEdit = useCallback(async () => {
     if (current) {
-      await deleteUnreferencedImageAssets(current.path, current.body);
+      await notesRepository.pruneImageAssets(
+        current.path,
+        extractAssetIdsFromMarkdown(current.body)
+      );
     }
     setAssetError('');
     setMode('view');
@@ -494,14 +492,14 @@ export default function App() {
   const createNote = useCallback(
     async (path: string) => {
       setCreating(false);
-      const exists = await db.notes.get(path);
+      const exists = await notesRepository.getNote(path);
       if (exists) {
         openNote(path);
         return;
       }
       const base = path.split('/').pop()!.replace(/\.md$/, '');
       const body = `# ${base}\n\n`;
-      await db.notes.put({ path, created: TODAY, updated: TODAY, body });
+      await notesRepository.createNote({ path, created: TODAY, updated: TODAY, body });
       setCurrentPath(path);
       setExpanded(new Set(ancestorsOf(path)));
       setDraft(body);
@@ -512,10 +510,7 @@ export default function App() {
 
   const deleteNote = useCallback(
     async (path: string) => {
-      await db.transaction('rw', db.notes, db.imageAssets, async () => {
-        await db.notes.delete(path);
-        await db.imageAssets.where('notePath').equals(path).delete();
-      });
+      await notesRepository.deleteNote(path);
       if (currentPath === path) {
         const remaining = notes.filter((n) => n.path !== path);
         if (remaining.length > 0) {
@@ -535,19 +530,10 @@ export default function App() {
       if (oldPath === newPath) return null;
       const note = notes.find((n) => n.path === oldPath);
       if (!note) return '変更対象のノートが見つかりません。';
-      const exists = await db.notes.get(newPath);
+      const exists = await notesRepository.getNote(newPath);
       if (exists) return `「${newPath}」は既に存在します。`;
 
-      const renamed = { ...note, path: newPath };
-
-      await db.transaction('rw', db.notes, db.settings, db.imageAssets, async () => {
-        await db.notes.put(renamed);
-        await db.notes.delete(oldPath);
-        await db.imageAssets.where('notePath').equals(oldPath).modify({ notePath: newPath });
-        if (oldPath === currentPath) {
-          await db.settings.put({ key: 'lastOpenedPath', value: newPath });
-        }
-      });
+      await notesRepository.renameNote(note, newPath, oldPath === currentPath);
 
       if (oldPath === currentPath) {
         setCurrentPath(newPath);
@@ -561,8 +547,8 @@ export default function App() {
   const exportNotes = useCallback(async () => {
     const today = new Intl.DateTimeFormat('sv-SE').format(new Date());
     const zip = new JSZip();
-    const all = await db.notes.toArray();
-    const allAssets = await db.imageAssets.toArray();
+    const all = await notesRepository.getAllNotes();
+    const allAssets = await notesRepository.getAllImageAssets();
     const referencedAssets = referencedImageAssets(
       all.map((note) => note.body),
       allAssets
