@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
 import { fireEvent, render } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
+
 import { MarkdownPreview } from '../../markdown';
 
 describe('MarkdownPreview', () => {

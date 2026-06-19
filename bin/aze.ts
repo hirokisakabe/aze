@@ -2,7 +2,9 @@ import { statSync } from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
 import sirv from 'sirv';
+
 import { createFsNotesHandler, expandHome } from '../src/server/fs-notes-handler';
 
 /**

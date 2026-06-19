@@ -1,4 +1,3 @@
-import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   ChevronRight,
   Plus,
@@ -8,6 +7,8 @@ import {
   MoreHorizontal,
   Trash2,
 } from 'lucide-react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
+
 import type { TreeNode as TreeNodeData } from './data';
 
 interface TreeNodeProps {

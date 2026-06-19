@@ -1,10 +1,13 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { EventEmitter } from 'node:events';
-import type { IncomingMessage, ServerResponse } from 'node:http';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+
 import { createFsNotesHandler } from '../../server/fs-notes-handler';
+
+import type { IncomingMessage, ServerResponse } from 'node:http';
 
 const WAIT_TIMEOUT = 3000;
 

@@ -99,8 +99,8 @@ export class FsNotesRepository implements NotesRepository {
     return this.loadNotes();
   }
 
-  async getAllImageAssets(): Promise<ImageAsset[]> {
-    return [];
+  getAllImageAssets(): Promise<ImageAsset[]> {
+    return Promise.resolve([]);
   }
 
   async getNote(path: string): Promise<Note | undefined> {
@@ -113,12 +113,13 @@ export class FsNotesRepository implements NotesRepository {
     return note;
   }
 
-  async getLastOpenedPath(): Promise<string | undefined> {
-    return localStorage.getItem(LAST_OPENED_KEY) ?? undefined;
+  getLastOpenedPath(): Promise<string | undefined> {
+    return Promise.resolve(localStorage.getItem(LAST_OPENED_KEY) ?? undefined);
   }
 
-  async setLastOpenedPath(path: string): Promise<void> {
+  setLastOpenedPath(path: string): Promise<void> {
     localStorage.setItem(LAST_OPENED_KEY, path);
+    return Promise.resolve();
   }
 
   async createNote(note: Note): Promise<void> {
@@ -156,8 +157,9 @@ export class FsNotesRepository implements NotesRepository {
     await this.notifyNotes();
   }
 
-  async addImageAssets(): Promise<void> {
+  addImageAssets(): Promise<void> {
     console.warn('[aze] fs driver: 画像の保存は未対応です (issue #78 最小実験のスコープ外)。');
+    return Promise.resolve();
   }
 
   async pruneImageAssets(): Promise<void> {

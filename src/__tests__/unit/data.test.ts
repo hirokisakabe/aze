@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
+
 import { buildTree, noteTitle, ancestorsOf } from '../../data';
+
 import type { Note } from '../../data';
 
 const note = (path: string, body = ''): Note => ({

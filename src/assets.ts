@@ -48,8 +48,11 @@ export function referencedImageAssets(markdowns: string[], assets: ImageAsset[])
 
 export function rewriteAssetUrlsForExport(markdown: string, assets: ImageAsset[]) {
   const pathById = new Map(assets.map((asset) => [asset.id, exportedAssetPath(asset)]));
-  return markdown.replace(/!\[([^\]]*)\]\(aze-asset:([^)]+)\)/g, (match, alt, id) => {
-    const path = pathById.get(id);
-    return path ? `![${alt}](${path})` : match;
-  });
+  return markdown.replace(
+    /!\[([^\]]*)\]\(aze-asset:([^)]+)\)/g,
+    (match: string, alt: string, id: string) => {
+      const path = pathById.get(id);
+      return path ? `![${alt}](${path})` : match;
+    }
+  );
 }
