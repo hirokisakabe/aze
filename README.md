@@ -9,6 +9,23 @@
 を Node `fs` 経由で vault に読み書きする。**`127.0.0.1` のみにバインドし、ネットワークには
 公開しない**ローカル専用のサーバー。
 
+### インストール / 実行
+
+npm に [`aze-cli`](https://www.npmjs.com/package/aze-cli) として公開している。SPA と CLI は
+ビルド済みで同梱されるため、追加のビルド手順なしに利用できる。
+
+```sh
+# インストール不要で実行
+npx aze-cli serve ~/work/me
+
+# グローバルインストールして `aze` コマンドとして使う
+npm install -g aze-cli
+aze serve ~/work/me
+aze serve ~/work/me --port 4321     # ポート指定 (default: 4321)
+```
+
+### ソースから動かす場合
+
 ```sh
 # 初回 / 更新時にビルド (SPA と CLI の両方を生成)
 npm run build:local      # = build:serve (dist-fs/) + build:cli (dist-cli/aze.js)
@@ -16,8 +33,6 @@ npm run build:local      # = build:serve (dist-fs/) + build:cli (dist-cli/aze.js
 # 起動 (どちらでも可)
 node dist-cli/aze.js serve ~/work/me
 npm link && aze serve ~/work/me     # npm link で `aze` コマンドとして使う
-
-aze serve ~/work/me --port 4321     # ポート指定 (default: 4321)
 ```
 
 - `<vault>`: vault root を positional 引数で受け取り、`~` 展開・絶対パス化する。配下の
@@ -27,7 +42,7 @@ aze serve ~/work/me --port 4321     # ポート指定 (default: 4321)
 - `created` / `updated` は frontmatter ではなく fs の birthtime / mtime から導出する。
 - 別プロセス (Claude Code 等) が編集した場合、リロードするまで反映されない (auto-reload 未実装)。
 
-> npm registry への公開 (`npx aze`) と auto-reload は別 issue で扱う。
+> auto-reload は別 issue で扱う。
 
 ## storage driver
 
