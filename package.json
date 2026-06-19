@@ -3,14 +3,20 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "bin": {
+    "aze": "./dist-cli/aze.js"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:serve": "VITE_STORAGE_DRIVER=fs vite build --outDir dist-fs",
+    "build:cli": "esbuild bin/aze.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist-cli/aze.js --banner:js='#!/usr/bin/env node' && chmod +x dist-cli/aze.js",
+    "build:local": "npm run build:serve && npm run build:cli",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src e2e",
-    "format": "prettier --write \"src/**/*.{ts,tsx,css,html}\" \"e2e/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,css,html}\" \"e2e/**/*.ts\"",
+    "lint": "eslint src e2e bin",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css,html}\" \"e2e/**/*.ts\" \"bin/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css,html}\" \"e2e/**/*.ts\" \"bin/**/*.ts\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
@@ -24,7 +30,8 @@
     "react-dom": "^18.3.1",
     "react-markdown": "^10.1.0",
     "remark-breaks": "^4.0.0",
-    "remark-gfm": "^4.0.1"
+    "remark-gfm": "^4.0.1",
+    "sirv": "^3.0.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
@@ -36,6 +43,7 @@
     "@types/react": "^18.3.29",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^6.0.2",
+    "esbuild": "^0.28.1",
     "eslint": "^10.4.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react": "^7.37.5",
