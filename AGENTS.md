@@ -2,16 +2,17 @@
 
 ## Project Structure & Module Organization
 
-This is a Vite + React + TypeScript application. Source files live in `src/`, with the main entry at `src/main.tsx` and app-level UI in `src/app.tsx`. Shared modules include `src/data.ts`, `src/db.ts`, `src/markdown.tsx`, and `src/sidebar.tsx`. Unit and integration tests are under `src/__tests__/`, split into `unit/` and `integration/`. Playwright tests live in `e2e/`. Build output goes to `dist/` and should not be edited directly.
+`aze` is primarily a CLI (`aze serve`) that serves a Vite + React + TypeScript SPA over a lightweight Node server and edits a local Markdown vault through `/api/notes`. The CLI entry is `bin/aze.ts` (bundled to `dist-cli/aze.js`); the fs-driver SPA is built to `dist-fs/`; the `/api/notes` middleware lives in `vite-fs-notes-plugin.ts`. App source lives in `src/`, with the entry at `src/main.tsx` and app-level UI in `src/app.tsx`. Shared modules include `src/data.ts`, `src/db.ts`, `src/markdown.tsx`, and `src/sidebar.tsx`. Unit and integration tests are under `src/__tests__/`, split into `unit/` and `integration/`. Playwright tests live in `e2e/`. Build output (`dist-cli/`, `dist-fs/`, `dist/`) is generated and should not be edited directly.
 
 ## Build, Test, and Development Commands
 
 - `npm run dev`: start the Vite development server.
-- `npm run build`: create a production build in `dist/`.
+- `npm run build:local`: build both the fs-driver SPA (`dist-fs/`) and the CLI (`dist-cli/aze.js`) used by `aze serve`. `build:serve` and `build:cli` are its two halves.
+- `npm run build`: create the hosted browser build in `dist/`.
 - `npm run preview`: serve the production build locally.
 - `npm run typecheck`: run TypeScript with `--noEmit`.
-- `npm run lint`: run ESLint over `src` and `e2e`.
-- `npm run format`: format source and e2e files with Prettier.
+- `npm run lint`: run ESLint over `src`, `e2e`, and `bin`.
+- `npm run format`: format source, e2e, and bin files with Prettier.
 - `npm run format:check`: check formatting without writing changes.
 - `npm test`: run Vitest once.
 - `npm run test:watch`: run Vitest in watch mode.
