@@ -1,35 +1,21 @@
 # aze
 
-ローカルの Markdown ディレクトリをブラウザの aze エディタで編集する CLI。
+[![npm version](https://img.shields.io/npm/v/aze-cli.svg)](https://www.npmjs.com/package/aze-cli)
 
-## aze serve (ローカル Markdown エディタ)
+ローカルの Markdown ディレクトリをブラウザで編集する CLI ツール。
 
-`aze serve <notes-dir>` で、ローカルの Markdown ディレクトリを aze の
-エディタで日常編集できる。build 済みの静的 SPA を軽量 Node サーバーで配信し、`/api/notes`
-を Node `fs` 経由でそのディレクトリに読み書きする。**`127.0.0.1` のみにバインドし、ネットワークには
-公開しない**ローカル専用のサーバー。
+## 使い方
 
-### インストール / 実行
-
-npm に [`aze-cli`](https://www.npmjs.com/package/aze-cli) として公開している。SPA と CLI は
-ビルド済みで同梱されるため、追加のビルド手順なしに利用できる。
+`aze serve <notes>` でローカルサーバーが起動し、ブラウザ上のエディタでそのディレクトリの Markdown を編集できる。
 
 ```sh
-# インストール不要で実行
-npx aze-cli serve ~/work/me
-
-# グローバルインストールして `aze` コマンドとして使う
-npm install -g aze-cli
-aze serve ~/work/me
-aze serve ~/work/me --port 4321     # ポート指定 (default: 4321)
+npx aze-cli serve ./notes
+npx aze-cli serve ./notes --port 4321     # ポート指定 (default: 4321)
 ```
 
-### notes ディレクトリの扱い
+## 特徴
 
-- `<notes-dir>`: notes ディレクトリを positional 引数で受け取り、`~` 展開・絶対パス化する。配下の
-  `.md` を再帰的に列挙して編集する。
-- notes ディレクトリ外パスへの read/write は拒否される (逸脱ガード)。
-- **画像 / wikilink は未対応** (notes の read/list/create/save/delete/rename のみ)。
-- `created` / `updated` は frontmatter ではなく fs の birthtime / mtime から導出する。
-- 別プロセス (Claude Code 等) が notes ディレクトリの `.md` を編集すると、手動リロードなしで自動反映される
-  (`/api/notes/events` の SSE で file watch を購読。debounce 込みで数秒以内)。
+- 指定したディレクトリ配下の `.md` を再帰的に一覧・編集できる。
+- 編集できるのは指定ディレクトリの中だけで、外のファイルには触れない。
+- 他のアプリやエディタ (Claude Code 等) でファイルを編集すると、リロードなしで数秒以内に自動反映される。
+- **画像 / wikilink は未対応**。
