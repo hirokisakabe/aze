@@ -11,10 +11,11 @@ export type Unsubscribe = () => void;
  * 設計方針:
  * - reactivity は Dexie 固有の `useLiveQuery` を漏らさず、`subscribe*` で表現する。
  *   driver 側は live query / file watch など任意の手段で実装してよい。
- * - 複数テーブルにまたがる更新 (note 保存時の画像 prune、削除、リネーム) は
- *   呼び出し側に atomic 性を意識させないよう、1 メソッドにまとめて driver 内部で完結させる。
- *   IndexedDB driver は transaction で atomic に行うが、filesystem 等 atomic 不可な
- *   driver では best-effort 実装を許容する。
+ * - 複数テーブルにまたがる更新 (note 保存時の画像 prune、削除、リネーム、画像追加) は
+ *   呼び出し側に atomic 性を意識させないよう、1 メソッドにまとめる。これらは caller から見て
+ *   all-or-nothing であることを contract とする (UI は部分適用されない前提で使う)。
+ *   IndexedDB driver は transaction で実現するが、transaction を持たない driver
+ *   (filesystem 等) でも補償処理や一時領域で caller-visible な atomicity を保つこと。
  */
 export interface NotesRepository {
   /** notes 全件の変化を購読する。購読開始直後に現在値が 1 度通知される。 */
@@ -128,7 +129,9 @@ class IndexedDbNotesRepository implements NotesRepository {
   }
 
   async addImageAssets(assets: ImageAsset[]): Promise<void> {
-    await db.imageAssets.bulkAdd(assets);
+    await db.transaction('rw', db.imageAssets, async () => {
+      await db.imageAssets.bulkAdd(assets);
+    });
   }
 
   async pruneImageAssets(notePath: string, referencedAssetIds: string[]): Promise<void> {
