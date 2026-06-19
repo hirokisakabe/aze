@@ -162,4 +162,36 @@ describe('MarkdownPreview', () => {
     const p = container.querySelector('blockquote p');
     expect(p).not.toBeNull();
   });
+
+  it('frontmatter を key-value パネルとして描画し生 YAML を出さない', () => {
+    const { container } = render(
+      <MarkdownPreview content={'---\ntitle: Hello\nstatus: living\n---\n# 本文\n'} />
+    );
+    const panel = container.querySelector('.md-frontmatter');
+    expect(panel).not.toBeNull();
+    const keys = Array.from(panel!.querySelectorAll('.fm-key')).map((el) => el.textContent);
+    expect(keys).toEqual(['title', 'status']);
+    const values = Array.from(panel!.querySelectorAll('.fm-value')).map((el) => el.textContent);
+    expect(values).toEqual(['Hello', 'living']);
+    // 生 YAML 由来の hr / 区切り線が view に出ていないこと
+    expect(container.querySelector('hr')).toBeNull();
+    // 本文 H1 は描画される
+    expect(container.querySelector('h1')?.textContent).toBe('本文');
+  });
+
+  it('スカラと配列の両方をパネルに描画する', () => {
+    const { container } = render(
+      <MarkdownPreview content={'---\ntitle: T\naliases:\n  - a\n  - b\n---\nbody'} />
+    );
+    const items = Array.from(container.querySelectorAll('.fm-list .fm-item')).map(
+      (el) => el.textContent
+    );
+    expect(items).toEqual(['a', 'b']);
+    expect(container.querySelector('.fm-key')?.textContent).toBe('title');
+  });
+
+  it('frontmatter を持たないノートではパネルを描画しない', () => {
+    const { container } = render(<MarkdownPreview content={'# ただの見出し\n\ntext'} />);
+    expect(container.querySelector('.md-frontmatter')).toBeNull();
+  });
 });
