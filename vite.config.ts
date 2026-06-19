@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), ...(useFsDriver ? [fsNotesPlugin({ notesDir: env.AZE_NOTES_DIR })] : [])],
     test: {
       environment: "jsdom",
-      setupFiles: ["./src/__tests__/setup.ts"],
+      setupFiles: ["./src/test-support/setup.ts"],
       globals: true,
       include: ["src/**/*.test.{ts,tsx}"],
       exclude: ["e2e/**"],
