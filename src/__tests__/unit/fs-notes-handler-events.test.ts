@@ -36,19 +36,19 @@ function makeConnection() {
 }
 
 describe('createFsNotesHandler /events (SSE)', () => {
-  let vault: string;
+  let notesDir: string;
 
   beforeEach(() => {
-    vault = mkdtempSync(path.join(os.tmpdir(), 'aze-sse-'));
-    writeFileSync(path.join(vault, 'hello.md'), '# Hello\n');
+    notesDir = mkdtempSync(path.join(os.tmpdir(), 'aze-sse-'));
+    writeFileSync(path.join(notesDir, 'hello.md'), '# Hello\n');
   });
 
   afterEach(() => {
-    rmSync(vault, { recursive: true, force: true });
+    rmSync(notesDir, { recursive: true, force: true });
   });
 
   it('SSE ヘッダと初回 retry 行を返す', async () => {
-    const handler = createFsNotesHandler({ vaultRoot: vault });
+    const handler = createFsNotesHandler({ notesRoot: notesDir });
     const { req, res, chunks } = makeConnection();
     await handler(req, res as unknown as ServerResponse);
 
@@ -62,8 +62,8 @@ describe('createFsNotesHandler /events (SSE)', () => {
     handler.close();
   });
 
-  it('vault の .md 変更で change イベントを push する', async () => {
-    const handler = createFsNotesHandler({ vaultRoot: vault });
+  it('notes ディレクトリの .md 変更で change イベントを push する', async () => {
+    const handler = createFsNotesHandler({ notesRoot: notesDir });
     const { req, res, chunks } = makeConnection();
     await handler(req, res as unknown as ServerResponse);
 
@@ -81,7 +81,7 @@ describe('createFsNotesHandler /events (SSE)', () => {
           resolve(undefined);
           return;
         }
-        writeFileSync(path.join(vault, 'hello.md'), `# Edited ${Date.now()}\n`);
+        writeFileSync(path.join(notesDir, 'hello.md'), `# Edited ${Date.now()}\n`);
       }, 500);
     });
 
@@ -90,12 +90,12 @@ describe('createFsNotesHandler /events (SSE)', () => {
   });
 
   it('close() は接続が無くても安全に呼べる', () => {
-    const handler = createFsNotesHandler({ vaultRoot: vault });
+    const handler = createFsNotesHandler({ notesRoot: notesDir });
     expect(() => handler.close()).not.toThrow();
   });
 
   it('close() はアクティブな SSE 接続を閉じる (response を end する)', async () => {
-    const handler = createFsNotesHandler({ vaultRoot: vault });
+    const handler = createFsNotesHandler({ notesRoot: notesDir });
     const { req, res } = makeConnection();
     await handler(req, res as unknown as ServerResponse);
 
