@@ -38,7 +38,8 @@ export function safeAssetFilename(id: string, filename: string) {
   const cleanName = filename
     .replace(/[\\/]/g, '-')
     .replace(/[^\w.\- ]+/g, '')
-    .trim();
+    .trim()
+    .replace(/\s+/g, '-');
   return `${cleanId}-${cleanName || 'image'}`;
 }
 

@@ -172,6 +172,9 @@ function sendBytes(res: ServerResponse, status: number, body: Buffer, contentTyp
   res.statusCode = status;
   res.setHeader('Content-Type', contentType);
   res.setHeader('Cache-Control', 'no-cache');
+  if (contentType === 'image/svg+xml') {
+    res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'");
+  }
   res.end(body);
 }
 

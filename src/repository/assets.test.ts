@@ -98,7 +98,7 @@ describe('exportedAssetPath', () => {
 
   it('パス区切りや不正文字を取り除いたファイル名にする', () => {
     expect(exportedAssetPath(asset('asset-b', 'sub/dir/my image?.png'))).toBe(
-      'assets/asset-b-sub-dir-my image.png'
+      'assets/asset-b-sub-dir-my-image.png'
     );
   });
 

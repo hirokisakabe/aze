@@ -196,9 +196,9 @@ describe('createFsNotesHandler', () => {
     });
 
     expect(status).toBe(200);
-    expect(json.path).toBe('assets/asset-a-screen shot.png');
-    expect(json.markdownUrl).toBe('../assets/asset-a-screen shot.png');
-    expect(readFileSync(path.join(notesDir, 'assets', 'asset-a-screen shot.png'), 'utf8')).toBe(
+    expect(json.path).toBe('assets/asset-a-screen-shot.png');
+    expect(json.markdownUrl).toBe('../assets/asset-a-screen-shot.png');
+    expect(readFileSync(path.join(notesDir, 'assets', 'asset-a-screen-shot.png'), 'utf8')).toBe(
       'image-bytes'
     );
   });
@@ -252,6 +252,26 @@ describe('createFsNotesHandler', () => {
     expect(status).toBe(200);
     expect(headers['content-type']).toBe('image/webp');
     expect(body).toBe('webp-bytes');
+  });
+
+  it('GET /assets/... は SVG に CSP を付けて返す', async () => {
+    mkdirSync(path.join(notesDir, 'assets'));
+    writeFileSync(path.join(notesDir, 'assets', 'diagram.svg'), '<svg></svg>');
+
+    const { status, headers } = await call(notesDir, 'GET', '/assets/assets/diagram.svg');
+
+    expect(status).toBe(200);
+    expect(headers['content-type']).toBe('image/svg+xml');
+    expect(headers['content-security-policy']).toBe(
+      "default-src 'none'; style-src 'unsafe-inline'"
+    );
+  });
+
+  it('GET /assets/... は存在しない画像で 404 を返す', async () => {
+    const { status, json } = await call(notesDir, 'GET', '/assets/assets/missing.png');
+
+    expect(status).toBe(404);
+    expect(json.error).toBe('not found');
   });
 
   it('DELETE /one は note を削除する', async () => {
