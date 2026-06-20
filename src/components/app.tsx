@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 
+import { useEditorHistory } from '../hooks/use-editor-history';
 import { useRepositorySubscription } from '../hooks/use-repository-subscription';
 import { buildTree, ancestorsOf, type Note } from '../lib/data';
 import { getParentFolder } from '../lib/note-path';
@@ -42,7 +43,15 @@ export default function App() {
   const imageAssets = useMemo(() => rawImageAssets ?? [], [rawImageAssets]);
   const [currentPath, setCurrentPath] = useState('');
   const [mode, setMode] = useState<'view' | 'edit'>('view');
-  const [draft, setDraft] = useState('');
+  const {
+    draft,
+    historyIndex,
+    commitInput,
+    commitEdit,
+    reset: resetHistory,
+    undo: undoDraft,
+    redo: redoDraft,
+  } = useEditorHistory('');
   const [assetError, setAssetError] = useState('');
   const [isDroppingImage, setIsDroppingImage] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -120,9 +129,18 @@ export default function App() {
 
   const enterEdit = useCallback(() => {
     if (!current) return;
-    setDraft(current.body);
+    resetHistory(current.body);
     setMode('edit');
-  }, [current]);
+  }, [current, resetHistory]);
+
+  // undo/redo で復元した snapshot のカーソル/選択範囲を、draft 反映後に textarea へ適用する。
+  const restoreFromHistory = useCallback((snapshot: ReturnType<typeof undoDraft>) => {
+    if (!snapshot) return;
+    pendingSelectionRef.current = {
+      selectionStart: snapshot.selectionStart,
+      selectionEnd: snapshot.selectionEnd,
+    };
+  }, []);
 
   const saveEdit = useCallback(async () => {
     if (!current) return;
@@ -130,6 +148,9 @@ export default function App() {
     setMode('view');
   }, [draft, current]);
 
+  // draft だけでなく historyIndex も依存に含める。undo/redo の前後で値が同じになる
+  // (短時間入力→削除で元に戻したあとの undo 等) ケースでも、index は必ず変わるため
+  // 選択範囲の復元が確実に走り、pendingSelectionRef が残留しない。
   useLayoutEffect(() => {
     const pendingSelection = pendingSelectionRef.current;
     if (!pendingSelection) return;
@@ -138,29 +159,44 @@ export default function App() {
       pendingSelection.selectionStart,
       pendingSelection.selectionEnd
     );
-  }, [draft]);
+  }, [draft, historyIndex]);
 
-  const updateTextareaIndent = useCallback((shiftKey: boolean) => {
-    const textarea = taRef.current;
-    if (!textarea) return;
-    const next = shiftKey
-      ? unindentText(textarea.value, textarea.selectionStart, textarea.selectionEnd)
-      : indentText(textarea.value, textarea.selectionStart, textarea.selectionEnd);
-    if (next.value === textarea.value) {
-      pendingSelectionRef.current = null;
-      textarea.setSelectionRange(next.selectionStart, next.selectionEnd);
-      return;
-    }
-    pendingSelectionRef.current = {
-      selectionStart: next.selectionStart,
-      selectionEnd: next.selectionEnd,
-    };
-    setDraft(next.value);
-  }, []);
+  const updateTextareaIndent = useCallback(
+    (shiftKey: boolean) => {
+      const textarea = taRef.current;
+      if (!textarea) return;
+      const beforeStart = textarea.selectionStart;
+      const beforeEnd = textarea.selectionEnd;
+      const next = shiftKey
+        ? unindentText(textarea.value, beforeStart, beforeEnd)
+        : indentText(textarea.value, beforeStart, beforeEnd);
+      if (next.value === textarea.value) {
+        pendingSelectionRef.current = null;
+        textarea.setSelectionRange(next.selectionStart, next.selectionEnd);
+        return;
+      }
+      pendingSelectionRef.current = {
+        selectionStart: next.selectionStart,
+        selectionEnd: next.selectionEnd,
+      };
+      commitEdit(
+        {
+          value: next.value,
+          selectionStart: next.selectionStart,
+          selectionEnd: next.selectionEnd,
+        },
+        { start: beforeStart, end: beforeEnd }
+      );
+    },
+    [commitEdit]
+  );
 
-  const insertMarkdownAtCursor = useCallback((markdown: string) => {
-    const textarea = taRef.current;
-    setDraft((currentDraft) => {
+  const insertMarkdownAtCursor = useCallback(
+    (markdown: string) => {
+      const textarea = taRef.current;
+      // controlled textarea なので textarea.value が最新の draft と一致する。
+      // uploadImageFiles は await を挟むため、closure の draft ではなく live な DOM 値を基準にする。
+      const currentDraft = textarea?.value ?? '';
       const selectionStart = textarea?.selectionStart ?? currentDraft.length;
       const selectionEnd = textarea?.selectionEnd ?? selectionStart;
       const prefix = currentDraft.slice(0, selectionStart);
@@ -170,9 +206,17 @@ export default function App() {
       const insertion = `${needsLeadingBreak}${markdown}${needsTrailingBreak}`;
       const cursor = prefix.length + insertion.length;
       pendingSelectionRef.current = { selectionStart: cursor, selectionEnd: cursor };
-      return `${prefix}${insertion}${suffix}`;
-    });
-  }, []);
+      commitEdit(
+        {
+          value: `${prefix}${insertion}${suffix}`,
+          selectionStart: cursor,
+          selectionEnd: cursor,
+        },
+        { start: selectionStart, end: selectionEnd }
+      );
+    },
+    [commitEdit]
+  );
 
   const uploadImageFiles = useCallback(
     async (files: FileList | File[]) => {
@@ -241,10 +285,10 @@ export default function App() {
       await notesRepository.createNote({ path, created: TODAY, updated: TODAY, body });
       setCurrentPath(path);
       setExpanded(new Set(ancestorsOf(path)));
-      setDraft(body);
+      resetHistory(body);
       setMode('edit');
     },
-    [openNote]
+    [openNote, resetHistory]
   );
 
   const deleteNote = useCallback(
@@ -410,7 +454,9 @@ export default function App() {
                     className="editor-area"
                     value={draft}
                     spellCheck={false}
-                    onChange={(e) => setDraft(e.target.value)}
+                    onChange={(e) =>
+                      commitInput(e.target.value, e.target.selectionStart, e.target.selectionEnd)
+                    }
                     onPaste={(e) => {
                       const files = e.clipboardData.files;
                       if (Array.from(files).some((file) => file.type.startsWith('image/'))) {
@@ -445,9 +491,22 @@ export default function App() {
                       void uploadImageFiles(e.dataTransfer.files);
                     }}
                     onKeyDown={(e) => {
-                      if (e.key !== 'Tab') return;
-                      e.preventDefault();
-                      updateTextareaIndent(e.shiftKey);
+                      if (e.key === 'Tab') {
+                        e.preventDefault();
+                        updateTextareaIndent(e.shiftKey);
+                        return;
+                      }
+                      const isUndoRedoKey = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z';
+                      const isRedoKey = e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'y';
+                      if (isUndoRedoKey) {
+                        e.preventDefault();
+                        restoreFromHistory(e.shiftKey ? redoDraft() : undoDraft());
+                        return;
+                      }
+                      if (isRedoKey) {
+                        e.preventDefault();
+                        restoreFromHistory(redoDraft());
+                      }
                     }}
                   />
                 </div>
