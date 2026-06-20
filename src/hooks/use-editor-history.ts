@@ -12,6 +12,9 @@ import {
 
 export interface UseEditorHistory {
   draft: string;
+  // 現在の履歴位置。undo/redo で値が変わらないケースでも選択範囲復元を確実に走らせるため、
+  // 呼び出し側の useLayoutEffect の依存に draft と併せて含める。
+  historyIndex: number;
   // 通常入力 (textarea onChange) の確定。短時間の連続入力は 1 エントリにまとめる。
   commitInput: (value: string, selectionStart: number, selectionEnd: number) => void;
   // Tab インデントや画像 Markdown 挿入など、アプリ側で draft を直接置き換える編集の確定。
@@ -68,6 +71,7 @@ export function useEditorHistory(initialValue: string): UseEditorHistory {
 
   return {
     draft: currentSnapshot(state).value,
+    historyIndex: state.index,
     commitInput,
     commitEdit,
     reset,

@@ -48,6 +48,25 @@ describe('editor の通常入力を undo/redo できる', () => {
     await waitFor(() => expect(textarea.value).toBe('hello world'));
   });
 
+  it('undo 前後で値が同じでもカーソル位置が復元される', async () => {
+    // 短時間に入力→削除して元の文字列に戻すと、coalesce で同値の履歴エントリができる。
+    // この状態で undo すると draft は不変だが、選択範囲は復元される必要がある。
+    const textarea = await openEditor('abc'); // 履歴先頭の選択範囲は末尾 (3,3)
+
+    fireEvent.change(textarea, { target: { value: 'abcx' } });
+    fireEvent.change(textarea, { target: { value: 'abc' } });
+    await waitFor(() => expect(textarea.value).toBe('abc'));
+
+    textarea.setSelectionRange(1, 1); // ユーザーがカーソルを移動
+
+    undo(textarea);
+    await waitFor(() => {
+      expect(textarea.selectionStart).toBe(3);
+      expect(textarea.selectionEnd).toBe(3);
+    });
+    expect(textarea.value).toBe('abc');
+  });
+
   it('Ctrl+Y でも redo できる', async () => {
     const textarea = await openEditor('hello');
 

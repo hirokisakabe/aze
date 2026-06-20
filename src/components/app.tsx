@@ -45,6 +45,7 @@ export default function App() {
   const [mode, setMode] = useState<'view' | 'edit'>('view');
   const {
     draft,
+    historyIndex,
     commitInput,
     commitEdit,
     reset: resetHistory,
@@ -147,6 +148,9 @@ export default function App() {
     setMode('view');
   }, [draft, current]);
 
+  // draft だけでなく historyIndex も依存に含める。undo/redo の前後で値が同じになる
+  // (短時間入力→削除で元に戻したあとの undo 等) ケースでも、index は必ず変わるため
+  // 選択範囲の復元が確実に走り、pendingSelectionRef が残留しない。
   useLayoutEffect(() => {
     const pendingSelection = pendingSelectionRef.current;
     if (!pendingSelection) return;
@@ -155,7 +159,7 @@ export default function App() {
       pendingSelection.selectionStart,
       pendingSelection.selectionEnd
     );
-  }, [draft]);
+  }, [draft, historyIndex]);
 
   const updateTextareaIndent = useCallback(
     (shiftKey: boolean) => {
