@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 
+import { buildTree, ancestorsOf, type Note } from '../lib/data';
 import {
   assetMarkdownUrl,
   createAssetId,
@@ -9,10 +10,10 @@ import {
   readableAltText,
   referencedImageAssets,
   rewriteAssetUrlsForExport,
-} from './assets';
-import { buildTree, ancestorsOf, type Note } from './data';
+} from '../repository/assets';
+import { notesRepository, type Unsubscribe } from '../repository/notes-repository';
+
 import { MarkdownPreview } from './markdown';
-import { notesRepository, type Unsubscribe } from './notes-repository';
 import { Sidebar } from './sidebar';
 
 const TODAY = new Intl.DateTimeFormat('sv-SE').format(new Date());

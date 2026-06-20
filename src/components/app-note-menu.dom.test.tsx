@@ -2,8 +2,7 @@ import { render, screen, waitFor, fireEvent, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 
-import App from './app';
-import { db } from './db';
+import { db } from '../repository/db';
 import {
   NOTE_A,
   NOTE_B,
@@ -11,7 +10,9 @@ import {
   sidebarText,
   findSidebarText,
   openNoteActions,
-} from './test-support/app-test-helpers';
+} from '../test-support/app-test-helpers';
+
+import App from './app';
 
 resetStateBeforeEach();
 

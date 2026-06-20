@@ -4,10 +4,10 @@ import remarkBreaks from 'remark-breaks';
 import remarkGemoji from 'remark-gemoji';
 import remarkGfm from 'remark-gfm';
 
-import { assetIdFromMarkdownUrl } from './assets';
-import { parseFrontmatter } from './frontmatter';
+import { parseFrontmatter } from '../lib/frontmatter';
+import { assetIdFromMarkdownUrl } from '../repository/assets';
 
-import type { FrontmatterEntry } from './frontmatter';
+import type { FrontmatterEntry } from '../lib/frontmatter';
 import type { ReactElement, ReactNode } from 'react';
 import type { Components } from 'react-markdown';
 

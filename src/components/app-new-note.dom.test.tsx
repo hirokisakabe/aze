@@ -2,16 +2,17 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
 
-import App from './app';
-import { db } from './db';
+import { db } from '../repository/db';
 import {
   NOTE_A,
   resetStateBeforeEach,
   sidebarText,
   findSidebarText,
-} from './test-support/app-test-helpers';
+} from '../test-support/app-test-helpers';
 
-import type { Note } from './data';
+import App from './app';
+
+import type { Note } from '../lib/data';
 
 resetStateBeforeEach();
 

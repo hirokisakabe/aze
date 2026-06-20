@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 
-import type { TreeNode as TreeNodeData } from './data';
+import type { TreeNode as TreeNodeData } from '../lib/data';
 
 interface TreeNodeProps {
   node: TreeNodeData;
