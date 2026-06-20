@@ -107,6 +107,7 @@ interface SidebarProps {
   onDelete: (path: string) => void;
   onRename: (path: string) => void;
   count: number;
+  mountPath?: string;
 }
 
 export function Sidebar({
@@ -120,6 +121,7 @@ export function Sidebar({
   onDelete,
   onRename,
   count,
+  mountPath,
 }: SidebarProps) {
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; path: string } | null>(null);
   const ctxRef = useRef<HTMLDivElement>(null);
@@ -244,6 +246,16 @@ export function Sidebar({
           />
         ))}
       </div>
+      {mountPath && (
+        <div
+          className="sb-mount"
+          title={mountPath}
+          aria-label={`マウントディレクトリ: ${mountPath}`}
+        >
+          <span className="sb-mount-label">dir</span>
+          <span className="sb-mount-path">{mountPath}</span>
+        </div>
+      )}
       <div className="sb-foot">
         <div className="sb-foot-notes">
           <span>{count} notes</span>

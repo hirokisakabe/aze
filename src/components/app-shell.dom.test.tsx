@@ -12,6 +12,7 @@ import {
 } from '../test-support/app-test-helpers';
 
 import App from './app';
+import { Sidebar } from './sidebar';
 
 resetStateBeforeEach();
 
@@ -63,5 +64,28 @@ describe('サイドバー下部のリンク', () => {
     expect(link.getAttribute('href')).toBe('https://github.com/hirokisakabe/aze');
     expect(link.getAttribute('target')).toBe('_blank');
     expect(link.getAttribute('rel')).toBe('noreferrer');
+  });
+
+  it('マウントディレクトリを省略可能な状態で表示する', () => {
+    const mountPath = '/Users/example/projects/very/long/path/to/notes';
+    render(
+      <Sidebar
+        tree={{ name: '', path: '', type: 'folder', children: [] }}
+        expanded={new Set()}
+        currentPath=""
+        onToggle={() => {}}
+        onOpen={() => {}}
+        onNew={() => {}}
+        onExport={() => {}}
+        onDelete={() => {}}
+        onRename={() => {}}
+        count={0}
+        mountPath={mountPath}
+      />
+    );
+
+    const mount = screen.getByLabelText(`マウントディレクトリ: ${mountPath}`);
+    expect(mount.textContent).toContain(mountPath);
+    expect(mount.getAttribute('title')).toBe(mountPath);
   });
 });

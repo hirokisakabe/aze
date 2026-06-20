@@ -7,6 +7,10 @@ import type { ImageAsset, Note } from '../lib/data';
 
 export type Unsubscribe = () => void;
 
+export interface MountInfo {
+  mountPath: string;
+}
+
 /**
  * Storage abstraction for aze. UI 層は本 interface 経由でのみ notes / imageAssets /
  * settings にアクセスし、具体的な driver (現状は IndexedDB / Dexie) を知らない。
@@ -32,6 +36,8 @@ export interface NotesRepository {
   getAllImageAssets(): Promise<ImageAsset[]>;
   /** 指定 path の note を取得する。存在しなければ undefined。 */
   getNote(path: string): Promise<Note | undefined>;
+  /** filesystem driver など、現在の mount 先を持つ driver だけが値を返す。 */
+  getMountInfo(): Promise<MountInfo | undefined>;
 
   /** 最後に開いた note の path を取得する。未設定なら undefined。 */
   getLastOpenedPath(): Promise<string | undefined>;
@@ -91,6 +97,10 @@ export class IndexedDbNotesRepository implements NotesRepository {
 
   getNote(path: string): Promise<Note | undefined> {
     return db.notes.get(path);
+  }
+
+  getMountInfo(): Promise<MountInfo | undefined> {
+    return Promise.resolve(undefined);
   }
 
   async getLastOpenedPath(): Promise<string | undefined> {

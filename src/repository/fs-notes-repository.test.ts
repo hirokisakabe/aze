@@ -96,6 +96,18 @@ describe('FsNotesRepository', () => {
     unsubscribe();
   });
 
+  it('getMountInfo は server meta から mountPath を取得する', async () => {
+    const mountPath = '/Users/example/very/long/notes/path';
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ mountPath }), { status: 200 })
+    );
+
+    const repo = new FsNotesRepository();
+
+    await expect(repo.getMountInfo()).resolves.toEqual({ mountPath });
+    expect(fetch).toHaveBeenCalledWith('/api/notes/meta', undefined);
+  });
+
   it('最後の unsubscribe で EventSource を閉じ、再 subscribe で張り直す', () => {
     const repo = new FsNotesRepository();
     const unsub1 = repo.subscribeNotes(vi.fn());

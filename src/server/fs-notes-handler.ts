@@ -14,6 +14,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
  * これを共有する。req/res は `node:http` 互換であれば足り、Vite にも CLI にも依存しない。
  *
  * API (いずれも `/api/notes` mount 後の相対パスで受ける):
+ * - `GET    /meta`           → { mountPath: string } (現在の notes ディレクトリ)
  * - `GET    /`              → { notes: Note[] }  (notes ディレクトリ配下の .md を再帰列挙)
  * - `GET    /one?path=...`  → { note: Note } | 404
  * - `PUT    /one`           → { note: Note }     (body: Note。作成 or 上書き)
@@ -151,13 +152,18 @@ interface RouteContext {
   url: URL;
 }
 
-type RouteHandler = (ctx: RouteContext) => Promise<void>;
+type RouteHandler = (ctx: RouteContext) => Promise<void> | void;
 
 /** GET / : notes ディレクトリ配下の .md を再帰列挙する。 */
 async function listNotes({ res, notesRoot }: RouteContext): Promise<void> {
   const rels = await listMarkdown(notesRoot);
   const notes = await Promise.all(rels.map((rel) => readNote(notesRoot, rel)));
   sendJson(res, 200, { notes });
+}
+
+/** GET /meta : ブラウザ側に現在の mount 先を知らせる。 */
+function getMeta({ res, notesRoot }: RouteContext): void {
+  sendJson(res, 200, { mountPath: notesRoot });
 }
 
 /** GET /one?path= : 単一 note を返す。存在しなければ 404。 */
@@ -211,6 +217,7 @@ async function renameNote({ req, res, notesRoot }: RouteContext): Promise<void> 
  * 処理本体は各エンドポイント関数に委ねる。マッチしなければ末尾の 404 にフォールバックする。
  */
 const routes: ReadonlyArray<{ method: string; pathname: string; handler: RouteHandler }> = [
+  { method: 'GET', pathname: '/meta', handler: getMeta },
   { method: 'GET', pathname: '/', handler: listNotes },
   { method: 'GET', pathname: '/one', handler: getNote },
   { method: 'PUT', pathname: '/one', handler: putNote },
