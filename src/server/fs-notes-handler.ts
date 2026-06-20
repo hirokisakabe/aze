@@ -222,7 +222,8 @@ async function handle(req: IncomingMessage, res: ServerResponse, notesRoot: stri
   // 呼び出し側が `/api/notes` mount 部分を req.url から取り除いている前提
   // (connect の `use('/api/notes', ...)` / CLI のプレフィックス除去)。
   const url = new URL(req.url ?? '/', 'http://localhost');
-  // 空 pathname (ルート mount 時の '') は '/' と同一視する。
+  // URL パース後の pathname は通常 '/' 以上で '' にはならないが、元実装の
+  // `pathname === ''` 分岐を防御的に踏襲し、空文字なら '/' と同一視する。
   const pathname = url.pathname === '' ? '/' : url.pathname;
   const method = req.method ?? 'GET';
 

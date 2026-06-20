@@ -183,4 +183,16 @@ describe('createFsNotesHandler', () => {
     const { status } = await call(notesDir, 'GET', '/unknown');
     expect(status).toBe(404);
   });
+
+  it('GET 空パスは GET / と同じく一覧を返す', async () => {
+    const { status, json } = await call(notesDir, 'GET', '');
+    expect(status).toBe(200);
+    const notes = json.notes as Array<{ path: string }>;
+    expect(notes.map((n) => n.path).sort()).toEqual(['hello.md', 'sub/nested.md']);
+  });
+
+  it('既知 path への未対応 method は 404', async () => {
+    expect((await call(notesDir, 'POST', '/one')).status).toBe(404);
+    expect((await call(notesDir, 'GET', '/rename')).status).toBe(404);
+  });
 });
