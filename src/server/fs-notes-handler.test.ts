@@ -217,6 +217,21 @@ describe('createFsNotesHandler', () => {
     expect(existsSync(path.join(notesDir, 'assets', 'asset-a-image.png'))).toBe(true);
   });
 
+  it('POST /assets は asset id をファイル名として安全な文字に正規化する', async () => {
+    const { status, json } = await call(notesDir, 'POST', '/assets', {
+      id: '../asset/a?',
+      notePath: 'hello.md',
+      filename: 'diagram.png',
+      mimeType: 'image/png',
+      data: Buffer.from('image-bytes').toString('base64'),
+    });
+
+    expect(status).toBe(200);
+    expect(json.path).toBe('assets/asset-a-diagram.png');
+    expect(existsSync(path.join(notesDir, 'assets', 'asset-a-diagram.png'))).toBe(true);
+    expect(existsSync(path.join(notesDir, 'assets', 'asset', 'a-diagram.png'))).toBe(false);
+  });
+
   it('GET /assets/... は画像ファイルを返す', async () => {
     mkdirSync(path.join(notesDir, 'assets'));
     writeFileSync(path.join(notesDir, 'assets', 'image.png'), 'image-bytes');

@@ -30,11 +30,16 @@ function safeExportFilename(asset: ImageAsset) {
 }
 
 export function safeAssetFilename(id: string, filename: string) {
+  const cleanId =
+    id
+      .replace(/[\\/]/g, '-')
+      .replace(/[^\w-]+/g, '')
+      .replace(/^-+|-+$/g, '') || 'asset';
   const cleanName = filename
     .replace(/[\\/]/g, '-')
     .replace(/[^\w.\- ]+/g, '')
     .trim();
-  return `${id}-${cleanName || 'image'}`;
+  return `${cleanId}-${cleanName || 'image'}`;
 }
 
 export function exportedAssetPath(asset: ImageAsset) {

@@ -112,6 +112,10 @@ describe('filesystem 画像アセットのパス変換', () => {
     expect(fsAssetPath('asset-a', 'diagram.png')).toBe('assets/asset-a-diagram.png');
   });
 
+  it('asset id もファイル名として安全な文字に正規化する', () => {
+    expect(fsAssetPath('../asset/a?', 'diagram.png')).toBe('assets/asset-a-diagram.png');
+  });
+
   it('note の階層から assets への相対 Markdown URL を生成する', () => {
     expect(fsAssetMarkdownUrl('note.md', 'assets/asset-a-diagram.png')).toBe(
       'assets/asset-a-diagram.png'
