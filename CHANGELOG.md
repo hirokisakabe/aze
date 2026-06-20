@@ -1,5 +1,15 @@
 # aze-cli
 
+## 0.5.0
+
+### Minor Changes
+
+- 418b11e: Show the currently mounted notes directory in the filesystem editor UI and browser title.
+
+### Patch Changes
+
+- 2d3ba02: fs driver (`aze serve`) で画像を notes ディレクトリ配下の実ファイルとして保存し、Markdown の相対パス参照でプレビュー表示できるようにしました。
+
 ## 0.4.0
 
 ### Minor Changes
