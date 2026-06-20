@@ -166,15 +166,15 @@ describe('別ノートに切り替えると undo 履歴が混ざらない', () =
 
     await findSidebarText('Note A');
     await userEvent.click(sidebarText('Note A'));
-    await userEvent.click(screen.getByTitle('編集 (E)'));
+    await userEvent.click(await screen.findByTitle('編集 (E)'));
 
     const textareaA = screen.getByRole('textbox') as HTMLTextAreaElement;
     fireEvent.change(textareaA, { target: { value: 'A edited' } });
     await waitFor(() => expect(textareaA.value).toBe('A edited'));
 
-    // 別ノート B に移動 (編集中の A は autosave される) → B を編集
+    // 別ノート B に移動 (編集中の A は autosave され、非同期で view へ遷移する) → B を編集
     await userEvent.click(sidebarText('Note B'));
-    await userEvent.click(screen.getByTitle('編集 (E)'));
+    await userEvent.click(await screen.findByTitle('編集 (E)'));
 
     const textareaB = screen.getByRole('textbox') as HTMLTextAreaElement;
     expect(textareaB.value).toBe(NOTE_B.body);
