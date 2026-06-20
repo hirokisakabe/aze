@@ -2,6 +2,7 @@ import { realpathSync, statSync } from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { parseArgs } from 'node:util';
 
 import sirv from 'sirv';
 
@@ -35,34 +36,51 @@ function printUsage(): void {
 }
 
 export function parseServeArgs(argv: string[]): ServeOptions {
-  let notesDir: string | undefined;
-  let port = DEFAULT_PORT;
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    if (arg === '--port' || arg === '-p') {
-      port = Number(argv[++i]);
-    } else if (arg.startsWith('--port=')) {
-      port = Number(arg.slice('--port='.length));
-    } else if (arg === '--help' || arg === '-h') {
-      printUsage();
-      process.exit(0);
-    } else if (!arg.startsWith('-') && notesDir === undefined) {
-      notesDir = arg;
-    } else {
-      console.error(`aze: unknown argument "${arg}"`);
-      printUsage();
-      process.exit(1);
-    }
+  let values: { port?: string; help?: boolean };
+  let positionals: string[];
+  try {
+    ({ values, positionals } = parseArgs({
+      args: argv,
+      options: {
+        port: { type: 'string', short: 'p' },
+        help: { type: 'boolean', short: 'h' },
+      },
+      allowPositionals: true,
+    }));
+  } catch (err) {
+    // 未知オプション・値欠落などは parseArgs が throw する。従来の usage 表示 + 非ゼロ終了に揃える。
+    const message = err instanceof Error ? err.message : String(err);
+    const unknownOption = /Unknown option '([^']+)'/.exec(message);
+    console.error(unknownOption ? `aze: unknown argument "${unknownOption[1]}"` : `aze: ${message}`);
+    printUsage();
+    process.exit(1);
   }
+
+  if (values.help) {
+    printUsage();
+    process.exit(0);
+  }
+
+  // 2 つ目以降の位置引数は受け付けない (parseArgs は複数 positional を許すため自前で弾く)。
+  if (positionals.length > 1) {
+    console.error(`aze: unknown argument "${positionals[1]}"`);
+    printUsage();
+    process.exit(1);
+  }
+
+  const notesDir = positionals[0];
   if (!notesDir) {
     console.error('aze: <notes-dir> is required');
     printUsage();
     process.exit(1);
   }
+
+  const port = values.port === undefined ? DEFAULT_PORT : Number(values.port);
   if (!Number.isInteger(port) || port < 0 || port > 65535) {
-    console.error(`aze: invalid --port "${port}"`);
+    console.error(`aze: invalid --port "${values.port}"`);
     process.exit(1);
   }
+
   return { notesDir, port };
 }
 
