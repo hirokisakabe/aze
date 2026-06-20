@@ -5,7 +5,12 @@ import { Readable } from 'node:stream';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { createFsNotesHandler, expandHome, resolveInNotesDir } from './fs-notes-handler';
+import {
+  createFsNotesHandler,
+  expandHome,
+  resolveAssetInNotesDir,
+  resolveInNotesDir,
+} from './fs-notes-handler';
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
@@ -58,6 +63,8 @@ describe('expandHome', () => {
 interface MockResult {
   status: number;
   json: Record<string, unknown>;
+  body: string;
+  headers: Record<string, string>;
 }
 
 /** `/api/notes` mount 後の相対 url を前提に handler を 1 回呼び、結果を取り出す。 */
@@ -74,20 +81,42 @@ async function call(
   req.url = url;
 
   let payload = '';
+  const headers: Record<string, string> = {};
   const res = {
     statusCode: 0,
-    setHeader() {},
-    end(chunk?: string) {
-      if (chunk) payload += chunk;
+    setHeader(name: string, value: string) {
+      headers[name.toLowerCase()] = value;
+    },
+    end(chunk?: string | Buffer) {
+      if (chunk) payload += Buffer.isBuffer(chunk) ? chunk.toString('utf8') : chunk;
     },
   };
 
   await handler(req, res as unknown as ServerResponse);
   return {
     status: res.statusCode,
-    json: payload ? (JSON.parse(payload) as Record<string, unknown>) : {},
+    json: payload && /^[{[]/.test(payload) ? (JSON.parse(payload) as Record<string, unknown>) : {},
+    body: payload,
+    headers,
   };
 }
+
+describe('resolveAssetInNotesDir', () => {
+  it('notes ディレクトリ配下の画像は絶対パスに解決する', () => {
+    expect(resolveAssetInNotesDir(NOTES_DIR, 'assets/image.png')).toBe(
+      path.join(NOTES_DIR, 'assets/image.png')
+    );
+    expect(resolveAssetInNotesDir(NOTES_DIR, 'sub/assets/image.webp')).toBe(
+      path.join(NOTES_DIR, 'sub/assets/image.webp')
+    );
+  });
+
+  it('画像拡張子でないパスや notes ディレクトリ外は拒否する', () => {
+    expect(resolveAssetInNotesDir(NOTES_DIR, 'memo.md')).toBeNull();
+    expect(resolveAssetInNotesDir(NOTES_DIR, '../escape.png')).toBeNull();
+    expect(resolveAssetInNotesDir(NOTES_DIR, '/tmp/image.png')).toBeNull();
+  });
+});
 
 describe('createFsNotesHandler', () => {
   let notesDir: string;
@@ -157,6 +186,94 @@ describe('createFsNotesHandler', () => {
     expect(existsSync(path.join(notesDir, 'sub', 'moved.md'))).toBe(true);
   });
 
+  it('POST /assets は画像を assets ディレクトリ配下へ保存し Markdown 相対パスを返す', async () => {
+    const { status, json } = await call(notesDir, 'POST', '/assets', {
+      id: 'asset-a',
+      notePath: 'sub/nested.md',
+      filename: 'screen shot.png',
+      mimeType: 'image/png',
+      data: Buffer.from('image-bytes').toString('base64'),
+    });
+
+    expect(status).toBe(200);
+    expect(json.path).toBe('assets/asset-a-screen-shot.png');
+    expect(json.markdownUrl).toBe('../assets/asset-a-screen-shot.png');
+    expect(readFileSync(path.join(notesDir, 'assets', 'asset-a-screen-shot.png'), 'utf8')).toBe(
+      'image-bytes'
+    );
+  });
+
+  it('POST /assets は拡張子なし filename に MIME type 由来の拡張子を補う', async () => {
+    const { status, json } = await call(notesDir, 'POST', '/assets', {
+      id: 'asset-a',
+      notePath: 'hello.md',
+      filename: 'image',
+      mimeType: 'image/png',
+      data: Buffer.from('image-bytes').toString('base64'),
+    });
+
+    expect(status).toBe(200);
+    expect(json.path).toBe('assets/asset-a-image.png');
+    expect(existsSync(path.join(notesDir, 'assets', 'asset-a-image.png'))).toBe(true);
+  });
+
+  it('POST /assets は asset id をファイル名として安全な文字に正規化する', async () => {
+    const { status, json } = await call(notesDir, 'POST', '/assets', {
+      id: '../asset/a?',
+      notePath: 'hello.md',
+      filename: 'diagram.png',
+      mimeType: 'image/png',
+      data: Buffer.from('image-bytes').toString('base64'),
+    });
+
+    expect(status).toBe(200);
+    expect(json.path).toBe('assets/asset-a-diagram.png');
+    expect(existsSync(path.join(notesDir, 'assets', 'asset-a-diagram.png'))).toBe(true);
+    expect(existsSync(path.join(notesDir, 'assets', 'asset', 'a-diagram.png'))).toBe(false);
+  });
+
+  it('GET /assets/... は画像ファイルを返す', async () => {
+    mkdirSync(path.join(notesDir, 'assets'));
+    writeFileSync(path.join(notesDir, 'assets', 'image.png'), 'image-bytes');
+
+    const { status, body, headers } = await call(notesDir, 'GET', '/assets/assets/image.png');
+
+    expect(status).toBe(200);
+    expect(headers['content-type']).toBe('image/png');
+    expect(body).toBe('image-bytes');
+  });
+
+  it('GET /assets/... は外部編集で追加されたサブディレクトリ画像も返す', async () => {
+    mkdirSync(path.join(notesDir, 'sub', 'assets'));
+    writeFileSync(path.join(notesDir, 'sub', 'assets', 'local.webp'), 'webp-bytes');
+
+    const { status, body, headers } = await call(notesDir, 'GET', '/assets/sub/assets/local.webp');
+
+    expect(status).toBe(200);
+    expect(headers['content-type']).toBe('image/webp');
+    expect(body).toBe('webp-bytes');
+  });
+
+  it('GET /assets/... は SVG に CSP を付けて返す', async () => {
+    mkdirSync(path.join(notesDir, 'assets'));
+    writeFileSync(path.join(notesDir, 'assets', 'diagram.svg'), '<svg></svg>');
+
+    const { status, headers } = await call(notesDir, 'GET', '/assets/assets/diagram.svg');
+
+    expect(status).toBe(200);
+    expect(headers['content-type']).toBe('image/svg+xml');
+    expect(headers['content-security-policy']).toBe(
+      "default-src 'none'; style-src 'unsafe-inline'"
+    );
+  });
+
+  it('GET /assets/... は存在しない画像で 404 を返す', async () => {
+    const { status, json } = await call(notesDir, 'GET', '/assets/assets/missing.png');
+
+    expect(status).toBe(404);
+    expect(json.error).toBe('not found');
+  });
+
   it('DELETE /one は note を削除する', async () => {
     const { status } = await call(notesDir, 'DELETE', '/one?path=hello.md');
     expect(status).toBe(200);
@@ -183,6 +300,12 @@ describe('createFsNotesHandler', () => {
   it('path/body が文字列でない PUT は 400', async () => {
     const { status } = await call(notesDir, 'PUT', '/one', { path: 123, body: {} });
     expect(status).toBe(400);
+  });
+
+  it('不正な asset body や画像以外の asset path は拒否する', async () => {
+    expect((await call(notesDir, 'POST', '/assets', { id: 'x' })).status).toBe(400);
+    expect((await call(notesDir, 'GET', '/assets/hello.md')).status).toBe(400);
+    expect((await call(notesDir, 'GET', '/assets/%2E%2E%2Fescape.png')).status).toBe(400);
   });
 
   it('未対応の method/path は 404', async () => {

@@ -1,5 +1,6 @@
 import { liveQuery } from 'dexie';
 
+import { assetMarkdownUrl } from './assets';
 import { db } from './db';
 import { FsNotesRepository } from './fs-notes-repository';
 
@@ -59,10 +60,15 @@ export interface NotesRepository {
    */
   renameNote(note: Note, newPath: string, updateLastOpened: boolean): Promise<void>;
 
-  /** 画像を追加する。 */
-  addImageAssets(assets: ImageAsset[]): Promise<void>;
+  /**
+   * 画像を追加し、Markdown へ挿入する URL を追加順で返す。
+   * IndexedDB driver は `aze-asset:`、filesystem driver は note から見た相対パスを返す。
+   */
+  addImageAssets(assets: ImageAsset[]): Promise<string[]>;
   /** 指定 note に紐づく画像のうち、参照されていないものを削除する。 */
   pruneImageAssets(notePath: string, referencedAssetIds: string[]): Promise<void>;
+  /** filesystem driver など、Markdown 内の相対画像 URL を表示用 URL に解決できる driver だけが値を返す。 */
+  resolveImageUrl(notePath: string, src: string): string | undefined;
 }
 
 const LAST_OPENED_PATH = 'lastOpenedPath';
@@ -141,14 +147,19 @@ export class IndexedDbNotesRepository implements NotesRepository {
     });
   }
 
-  async addImageAssets(assets: ImageAsset[]): Promise<void> {
+  async addImageAssets(assets: ImageAsset[]): Promise<string[]> {
     await db.transaction('rw', db.imageAssets, async () => {
       await db.imageAssets.bulkAdd(assets);
     });
+    return assets.map((asset) => assetMarkdownUrl(asset.id));
   }
 
   async pruneImageAssets(notePath: string, referencedAssetIds: string[]): Promise<void> {
     await pruneUnreferencedAssets(notePath, referencedAssetIds);
+  }
+
+  resolveImageUrl(): string | undefined {
+    return undefined;
   }
 }
 

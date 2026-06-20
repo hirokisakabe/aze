@@ -1,3 +1,5 @@
+import { fsAssetApiUrl } from './assets';
+
 import type { MountInfo, NotesRepository, Unsubscribe } from './notes-repository';
 import type { ImageAsset, Note } from '../lib/data';
 
@@ -5,9 +7,10 @@ import type { ImageAsset, Note } from '../lib/data';
  * filesystem driver (最小実験版)。`VITE_STORAGE_DRIVER=fs` の時に選択され、dev サーバーに
  * 同居する `/api/notes` middleware (vite-fs-notes-plugin) 経由で notes ディレクトリの .md を読み書きする。
  *
- * スコープ (issue #78 の最小実験):
- * - notes の read / list / create / save / delete / rename のみ対応する。
- * - 画像 (imageAssets) と wikilink は未対応。画像系メソッドは no-op / 空配列を返す。
+ * スコープ:
+ * - notes の read / list / create / save / delete / rename に対応する。
+ * - 画像は `/api/notes/assets` 経由で notes ディレクトリ配下へ実ファイルとして保存し、
+ *   Markdown には note から見た相対パスを挿入する。
  * - 別プロセス (Claude Code 等) の外部編集は `/api/notes/events` (SSE) を購読して auto-reload する
  *   (issue #87)。SSE が使えない環境 (EventSource 不在) では自アプリ内の編集後のみ再 fetch して通知する。
  * - lastOpenedPath は notes ディレクトリを汚さないよう localStorage に保持する (UI state でありファイルの中身ではない)。
@@ -24,6 +27,16 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
     throw new Error(`fs driver request failed (${res.status}) ${url}: ${detail}`);
   }
   return res.json() as Promise<T>;
+}
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return blob.arrayBuffer().then((buffer) => {
+    let binary = '';
+    for (const byte of new Uint8Array(buffer)) {
+      binary += String.fromCharCode(byte);
+    }
+    return btoa(binary);
+  });
 }
 
 export class FsNotesRepository implements NotesRepository {
@@ -88,7 +101,8 @@ export class FsNotesRepository implements NotesRepository {
   }
 
   subscribeImageAssets(listener: (assets: ImageAsset[]) => void): Unsubscribe {
-    // 画像は最小実験のスコープ外。購読開始直後に空配列を 1 度だけ通知する。
+    // fs driver の画像は実ファイルを Markdown 相対パスで参照するため、Blob URL 用の
+    // imageAssets 購読は使わない。購読開始直後に空配列を 1 度だけ通知する。
     listener([]);
     return () => {
       // 通知することがないので解除も no-op。
@@ -133,7 +147,7 @@ export class FsNotesRepository implements NotesRepository {
   }
 
   async saveNote(note: Note): Promise<void> {
-    // 画像 prune は fs driver では未対応 (画像はスコープ外) のため、本文の書き込みのみ行う。
+    // fs driver の画像は相対パス参照の実ファイルなので、IndexedDB の asset id prune は行わない。
     await this.writeNote(note);
   }
 
@@ -163,12 +177,30 @@ export class FsNotesRepository implements NotesRepository {
     await this.notifyNotes();
   }
 
-  addImageAssets(): Promise<void> {
-    console.warn('[aze] fs driver: 画像の保存は未対応です (issue #78 最小実験のスコープ外)。');
-    return Promise.resolve();
+  async addImageAssets(assets: ImageAsset[]): Promise<string[]> {
+    const saved = await Promise.all(
+      assets.map(async (asset) =>
+        requestJson<{ markdownUrl: string }>(`${BASE}/assets`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: asset.id,
+            notePath: asset.notePath,
+            filename: asset.filename,
+            mimeType: asset.mimeType,
+            data: await blobToBase64(asset.blob),
+          }),
+        })
+      )
+    );
+    return saved.map((asset) => asset.markdownUrl);
   }
 
   async pruneImageAssets(): Promise<void> {
-    // 画像はスコープ外。prune 対象が存在しないため何もしない。
+    // fs driver の画像は Markdown 相対パス参照の実ファイルなので、IndexedDB の asset id prune は行わない。
+  }
+
+  resolveImageUrl(notePath: string, src: string): string | undefined {
+    return fsAssetApiUrl(notePath, src);
   }
 }
