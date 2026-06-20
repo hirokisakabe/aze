@@ -70,7 +70,7 @@ async function pruneUnreferencedAssets(notePath: string, referencedAssetIds: str
   }
 }
 
-class IndexedDbNotesRepository implements NotesRepository {
+export class IndexedDbNotesRepository implements NotesRepository {
   subscribeNotes(listener: (notes: Note[]) => void): Unsubscribe {
     const subscription = liveQuery(() => db.notes.toArray()).subscribe({ next: listener });
     return () => subscription.unsubscribe();
