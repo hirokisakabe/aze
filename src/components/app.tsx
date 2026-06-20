@@ -5,6 +5,7 @@ import { useEditorHistory } from '../hooks/use-editor-history';
 import { useRepositorySubscription } from '../hooks/use-repository-subscription';
 import { buildTree, ancestorsOf, type Note } from '../lib/data';
 import { getParentFolder } from '../lib/note-path';
+import { formatPageTitle } from '../lib/page-title';
 import { indentText, renderWsOverlay, unindentText, type IndentResult } from '../lib/text-editing';
 import {
   assetMarkdownUrl,
@@ -56,6 +57,7 @@ export default function App() {
   const [isDroppingImage, setIsDroppingImage] = useState(false);
   const [creating, setCreating] = useState(false);
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
+  const [mountPath, setMountPath] = useState<string>();
   const [expanded, setExpanded] = useState(() => new Set<string>());
   const taRef = useRef<HTMLTextAreaElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -75,6 +77,25 @@ export default function App() {
     return next;
   }, [imageAssets]);
   const resolveAssetUrl = useCallback((id: string) => assetUrls.get(id), [assetUrls]);
+
+  useEffect(() => {
+    let alive = true;
+    void notesRepository
+      .getMountInfo()
+      .then((info) => {
+        if (alive) setMountPath(info?.mountPath);
+      })
+      .catch(() => {
+        if (alive) setMountPath(undefined);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    document.title = formatPageTitle(mountPath);
+  }, [mountPath]);
 
   useEffect(() => {
     return () => {
@@ -414,6 +435,7 @@ export default function App() {
         onDelete={deleteNote}
         onRename={setRenamingPath}
         count={notes.length}
+        mountPath={mountPath}
       />
 
       <main className="main">

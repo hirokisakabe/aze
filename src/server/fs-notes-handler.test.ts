@@ -110,6 +110,12 @@ describe('createFsNotesHandler', () => {
     expect(notes.map((n) => n.path).sort()).toEqual(['hello.md', 'sub/nested.md']);
   });
 
+  it('GET /meta は現在の notes ディレクトリを返す', async () => {
+    const { status, json } = await call(notesDir, 'GET', '/meta');
+    expect(status).toBe(200);
+    expect(json.mountPath).toBe(notesDir);
+  });
+
   it('GET /one?path= は note を返す', async () => {
     const { status, json } = await call(notesDir, 'GET', '/one?path=hello.md');
     expect(status).toBe(200);

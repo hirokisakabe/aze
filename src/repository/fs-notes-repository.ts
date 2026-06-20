@@ -1,4 +1,4 @@
-import type { NotesRepository, Unsubscribe } from './notes-repository';
+import type { MountInfo, NotesRepository, Unsubscribe } from './notes-repository';
 import type { ImageAsset, Note } from '../lib/data';
 
 /**
@@ -111,6 +111,10 @@ export class FsNotesRepository implements NotesRepository {
     }
     const { note } = (await res.json()) as { note: Note };
     return note;
+  }
+
+  async getMountInfo(): Promise<MountInfo | undefined> {
+    return requestJson<MountInfo>(`${BASE}/meta`);
   }
 
   // localStorage アクセスは SecurityError / QuotaExceededError を投げうる。async 同様に
