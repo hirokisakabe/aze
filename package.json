@@ -27,14 +27,14 @@
   "author": "hirokisakabe",
   "license": "MIT",
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "scripts": {
     "prepublishOnly": "npm run build:local",
     "dev": "vite",
     "build": "vite build",
     "build:serve": "VITE_STORAGE_DRIVER=fs vite build --outDir dist-fs",
-    "build:cli": "esbuild bin/aze.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist-cli/aze.js --banner:js='#!/usr/bin/env node' && chmod +x dist-cli/aze.js",
+    "build:cli": "esbuild bin/aze.ts --bundle --platform=node --format=esm --target=node24 --outfile=dist-cli/aze.js --banner:js='#!/usr/bin/env node' && chmod +x dist-cli/aze.js",
     "build:local": "npm run build:serve && npm run build:cli",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
