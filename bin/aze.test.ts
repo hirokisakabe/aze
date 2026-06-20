@@ -5,14 +5,18 @@ import { pathToFileURL } from 'node:url';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import pkg from '../package.json' with { type: 'json' };
+
 import {
   isCliEntry,
   parseServeArgs,
+  runCli,
   serve,
   serverErrorMessage,
   stripApiPrefix,
   validateNotesDir,
   validateSpaBuilt,
+  VERSION,
 } from './aze';
 
 /** process.exit を捕捉するための番兵エラー。終了コードを保持する。 */
@@ -136,6 +140,59 @@ describe('parseServeArgs', () => {
     expect(() => parseServeArgs(['--help', '--bogus'])).toThrow(ExitError);
     expect(spies.exit).toHaveBeenCalledWith(0);
     expect(spies.log).toHaveBeenCalledWith(expect.stringContaining('aze serve'));
+  });
+});
+
+describe('VERSION', () => {
+  it('package.json の version と一致する (手書き定数で二重管理しない)', () => {
+    expect(VERSION).toBe(pkg.version);
+  });
+});
+
+describe('runCli', () => {
+  let spies: ReturnType<typeof stubProcess>;
+
+  beforeEach(() => {
+    spies = stubProcess();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('--version で package.json の version を表示し正常終了する', () => {
+    expect(() => runCli(['--version'])).toThrow(ExitError);
+    expect(spies.exit).toHaveBeenCalledWith(0);
+    expect(spies.log).toHaveBeenCalledWith(pkg.version);
+  });
+
+  it('-V でも package.json の version を表示し正常終了する', () => {
+    expect(() => runCli(['-V'])).toThrow(ExitError);
+    expect(spies.exit).toHaveBeenCalledWith(0);
+    expect(spies.log).toHaveBeenCalledWith(pkg.version);
+  });
+
+  it('--help でヘルプを表示し正常終了する (既存挙動)', () => {
+    expect(() => runCli(['--help'])).toThrow(ExitError);
+    expect(spies.exit).toHaveBeenCalledWith(0);
+    expect(spies.log).toHaveBeenCalledWith(expect.stringContaining('aze serve'));
+  });
+
+  it('-h でヘルプを表示し正常終了する (既存挙動)', () => {
+    expect(() => runCli(['-h'])).toThrow(ExitError);
+    expect(spies.exit).toHaveBeenCalledWith(0);
+    expect(spies.log).toHaveBeenCalledWith(expect.stringContaining('aze serve'));
+  });
+
+  it('コマンド無しでヘルプを表示し異常終了する (既存挙動)', () => {
+    expect(() => runCli([])).toThrow(ExitError);
+    expect(spies.exit).toHaveBeenCalledWith(1);
+  });
+
+  it('不明なコマンドはエラー出力して異常終了する (既存挙動)', () => {
+    expect(() => runCli(['bogus'])).toThrow(ExitError);
+    expect(spies.exit).toHaveBeenCalledWith(1);
+    expect(spies.error).toHaveBeenCalledWith(expect.stringContaining('unknown command'));
   });
 });
 
