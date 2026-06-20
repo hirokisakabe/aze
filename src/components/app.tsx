@@ -1,7 +1,10 @@
 import JSZip from 'jszip';
 import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 
+import { useRepositorySubscription } from '../hooks/use-repository-subscription';
 import { buildTree, ancestorsOf, type Note } from '../lib/data';
+import { getParentFolder } from '../lib/note-path';
+import { indentText, renderWsOverlay, unindentText, type IndentResult } from '../lib/text-editing';
 import {
   assetMarkdownUrl,
   createAssetId,
@@ -11,290 +14,20 @@ import {
   referencedImageAssets,
   rewriteAssetUrlsForExport,
 } from '../repository/assets';
-import { notesRepository, type Unsubscribe } from '../repository/notes-repository';
+import { notesRepository } from '../repository/notes-repository';
 
+import { Breadcrumb } from './breadcrumb';
 import { MarkdownPreview } from './markdown';
+import { NewNoteDialog } from './new-note-dialog';
+import { RenameNoteDialog } from './rename-note-dialog';
 import { Sidebar } from './sidebar';
 
 const TODAY = new Intl.DateTimeFormat('sv-SE').format(new Date());
-
-function renderWsOverlay(text: string): React.ReactNode[] {
-  const out: React.ReactNode[] = [];
-  let buf = '';
-  let k = 0;
-  const flush = () => {
-    if (!buf) return;
-    out.push(
-      <span key={k++} style={{ color: 'transparent' }}>
-        {buf}
-      </span>
-    );
-    buf = '';
-  };
-  for (const ch of text) {
-    if (ch === ' ') {
-      flush();
-      out.push(
-        <span key={k++} className="ws-dot">
-          {' '}
-        </span>
-      );
-    } else if (ch === '\t') {
-      flush();
-      out.push(
-        <span key={k++} className="ws-tab">
-          {'\t'}
-        </span>
-      );
-    } else {
-      buf += ch;
-    }
-  }
-  flush();
-  return out;
-}
-
-const INDENT = '  ';
-
-interface IndentResult {
-  value: string;
-  selectionStart: number;
-  selectionEnd: number;
-}
-
-function lineBoundsForSelection(value: string, selectionStart: number, selectionEnd: number) {
-  const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
-  const adjustedEnd =
-    selectionEnd > selectionStart && value[selectionEnd - 1] === '\n'
-      ? selectionEnd - 1
-      : selectionEnd;
-  const nextLineBreak = value.indexOf('\n', adjustedEnd);
-  const lineEnd = nextLineBreak === -1 ? value.length : nextLineBreak;
-  return { lineStart, lineEnd };
-}
-
-function indentText(value: string, selectionStart: number, selectionEnd: number): IndentResult {
-  const { lineStart, lineEnd } = lineBoundsForSelection(value, selectionStart, selectionEnd);
-  const lines = value.slice(lineStart, lineEnd).split('\n');
-  const indented = lines.map((line) => `${INDENT}${line}`).join('\n');
-  const inserted = lines.length * INDENT.length;
-  return {
-    value: value.slice(0, lineStart) + indented + value.slice(lineEnd),
-    selectionStart: selectionStart + INDENT.length,
-    selectionEnd:
-      selectionStart === selectionEnd ? selectionEnd + INDENT.length : selectionEnd + inserted,
-  };
-}
-
-function unindentText(value: string, selectionStart: number, selectionEnd: number): IndentResult {
-  const { lineStart, lineEnd } = lineBoundsForSelection(value, selectionStart, selectionEnd);
-  const lines = value.slice(lineStart, lineEnd).split('\n');
-  let cursor = lineStart;
-  let selectionStartOffset = 0;
-  let selectionEndOffset = 0;
-
-  const unindented = lines
-    .map((line) => {
-      const removeCount = line.startsWith(INDENT) ? INDENT.length : line.startsWith(' ') ? 1 : 0;
-      const removeStart = cursor;
-      const removeEnd = cursor + removeCount;
-      if (removeCount > 0) {
-        if (removeEnd <= selectionStart) selectionStartOffset += removeCount;
-        else if (removeStart < selectionStart) selectionStartOffset += selectionStart - removeStart;
-        if (removeEnd <= selectionEnd) selectionEndOffset += removeCount;
-        else if (removeStart < selectionEnd) selectionEndOffset += selectionEnd - removeStart;
-      }
-      cursor += line.length + 1;
-      return line.slice(removeCount);
-    })
-    .join('\n');
-
-  return {
-    value: value.slice(0, lineStart) + unindented + value.slice(lineEnd),
-    selectionStart: Math.max(lineStart, selectionStart - selectionStartOffset),
-    selectionEnd: Math.max(lineStart, selectionEnd - selectionEndOffset),
-  };
-}
-
-interface BreadcrumbProps {
-  path: string;
-}
-
-function Breadcrumb({ path }: BreadcrumbProps) {
-  const parts = path.replace(/\.md$/, '').split('/');
-  return (
-    <div className="crumb">
-      <span className="crumb-bracket">[</span>
-      {parts.map((p, i) => (
-        <span className="crumb-seg" key={i}>
-          {i > 0 && <span className="crumb-sep">/</span>}
-          <span className={i === parts.length - 1 ? 'crumb-leaf' : ''}>{p}</span>
-        </span>
-      ))}
-      <span className="crumb-bracket">]</span>
-    </div>
-  );
-}
-
-function getParentFolder(path: string): string {
-  const lastSlash = path.lastIndexOf('/');
-  return lastSlash === -1 ? '' : path.slice(0, lastSlash + 1);
-}
-
-interface ParsedNotePath {
-  path: string;
-  error: string;
-}
-
-function parseNotePath(path: string): ParsedNotePath {
-  let nextPath = path.trim();
-  if (!nextPath) return { path: '', error: '' };
-  nextPath = nextPath.replace(/^\/+/, '').replace(/\/+/g, '/');
-  if (!nextPath || nextPath.endsWith('/')) {
-    return { path: '', error: 'ファイル名を含むパスを入力してください。' };
-  }
-  if (nextPath.split('/').some((part) => part === '.' || part === '..')) {
-    return { path: '', error: '「.」または「..」を含むパスは使えません。' };
-  }
-  if (!nextPath.endsWith('.md')) nextPath += '.md';
-  return { path: nextPath, error: '' };
-}
-
-function useRepositorySubscription<T>(
-  subscribe: (listener: (value: T) => void) => Unsubscribe
-): T | undefined {
-  const [value, setValue] = useState<T>();
-  useEffect(() => subscribe(setValue), [subscribe]);
-  return value;
-}
 
 async function persistNoteBody(note: Note, body: string) {
   await notesRepository.saveNote(
     { ...note, body, updated: TODAY },
     extractAssetIdsFromMarkdown(body)
-  );
-}
-
-interface NewNoteDialogProps {
-  defaultPrefix: string;
-  onCreate: (path: string) => void;
-  onCancel: () => void;
-}
-
-function NewNoteDialog({ defaultPrefix, onCreate, onCancel }: NewNoteDialogProps) {
-  const [val, setVal] = useState(defaultPrefix);
-  const [error, setError] = useState('');
-  const ref = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    ref.current?.focus();
-  }, []);
-  const submit = () => {
-    const result = parseNotePath(val);
-    if (result.error) {
-      setError(result.error);
-      return;
-    }
-    if (!result.path) return;
-    onCreate(result.path);
-  };
-  return (
-    <div className="dialog-scrim" onClick={onCancel}>
-      <div className="dialog" onClick={(e) => e.stopPropagation()}>
-        <div className="dialog-label">新規ノート</div>
-        <div className="dialog-row">
-          <input
-            ref={ref}
-            className="dialog-input"
-            value={val}
-            placeholder="ideas/new-idea.md"
-            spellCheck={false}
-            onChange={(e) => {
-              setVal(e.target.value);
-              setError('');
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.nativeEvent.isComposing) submit();
-              if (e.key === 'Escape') onCancel();
-            }}
-          />
-        </div>
-        {error ? (
-          <div className="dialog-error" role="alert">
-            {error}
-          </div>
-        ) : (
-          <div className="dialog-hint">
-            パスを入力 → <kbd>Enter</kbd> で作成。フォルダは自動で作られます。
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-interface RenameNoteDialogProps {
-  initialPath: string;
-  onRename: (path: string) => Promise<string | null>;
-  onCancel: () => void;
-}
-
-function RenameNoteDialog({ initialPath, onRename, onCancel }: RenameNoteDialogProps) {
-  const [val, setVal] = useState(initialPath);
-  const [error, setError] = useState('');
-  const ref = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    ref.current?.focus();
-    ref.current?.select();
-  }, []);
-
-  const submit = async () => {
-    const result = parseNotePath(val);
-    if (result.error) {
-      setError(result.error);
-      return;
-    }
-    if (!result.path) return;
-    const message = await onRename(result.path);
-    if (message) {
-      setError(message);
-      return;
-    }
-    onCancel();
-  };
-
-  return (
-    <div className="dialog-scrim" onClick={onCancel}>
-      <div className="dialog" onClick={(e) => e.stopPropagation()}>
-        <div className="dialog-label">パス変更</div>
-        <div className="dialog-row">
-          <input
-            ref={ref}
-            className="dialog-input"
-            value={val}
-            placeholder="archive/note.md"
-            spellCheck={false}
-            onChange={(e) => {
-              setVal(e.target.value);
-              setError('');
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.nativeEvent.isComposing) void submit();
-              if (e.key === 'Escape') onCancel();
-            }}
-          />
-        </div>
-        {error ? (
-          <div className="dialog-error" role="alert">
-            {error}
-          </div>
-        ) : (
-          <div className="dialog-hint">
-            ファイル名またはフォルダを含むパスを入力 → <kbd>Enter</kbd> で変更。
-          </div>
-        )}
-      </div>
-    </div>
   );
 }
 
