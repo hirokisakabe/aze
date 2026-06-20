@@ -6,6 +6,7 @@ import { parseArgs } from 'node:util';
 
 import sirv from 'sirv';
 
+import pkg from '../package.json' with { type: 'json' };
 import { createFsNotesHandler, expandHome } from '../src/server/fs-notes-handler';
 
 /**
@@ -19,6 +20,12 @@ import { createFsNotesHandler, expandHome } from '../src/server/fs-notes-handler
 const HOST = '127.0.0.1';
 const DEFAULT_PORT = 4321;
 const API_PREFIX = '/api/notes';
+
+/**
+ * CLI のバージョン文字列。`package.json` の `version` を import してバンドル時に
+ * 埋め込む (esbuild が JSON import をインライン化する)。手書きの定数で二重管理しない。
+ */
+export const VERSION: string = pkg.version;
 
 interface ServeOptions {
   notesDir: string;
@@ -191,11 +198,16 @@ export function serve(options: ServeOptions): void {
   });
 }
 
-function main(): void {
-  const [command, ...rest] = process.argv.slice(2);
+export function runCli(argv: string[]): void {
+  const [command, ...rest] = argv;
   if (command === 'serve') {
     serve(parseServeArgs(rest));
     return;
+  }
+  if (command === '--version' || command === '-V') {
+    // --version / -V はバージョンを表示して即座に正常終了する。
+    console.log(VERSION);
+    process.exit(0);
   }
   if (command === undefined) {
     printUsage();
@@ -208,6 +220,10 @@ function main(): void {
   console.error(`aze: unknown command "${command}"`);
   printUsage();
   process.exit(1);
+}
+
+function main(): void {
+  runCli(process.argv.slice(2));
 }
 
 /**
