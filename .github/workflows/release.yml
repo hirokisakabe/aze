@@ -21,8 +21,9 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          # OIDC Trusted Publishing は Node.js 22.14.0 以上が必須。
-          node-version: 22.14.0
+          # Node バージョンは .node-version で一元管理する。
+          # OIDC Trusted Publishing は Node.js 22.14.0 以上が必須で、Node 24 はこれを満たす。
+          node-version-file: .node-version
           registry-url: 'https://registry.npmjs.org'
           # release ビルドでは依存キャッシュを使わない。
           package-manager-cache: false
