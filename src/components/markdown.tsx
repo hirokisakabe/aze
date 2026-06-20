@@ -96,9 +96,14 @@ function transformMarkdownUrl(value: string) {
 interface MarkdownPreviewProps {
   content: string;
   resolveAssetUrl?: (id: string) => string | undefined;
+  resolveImageUrl?: (src: string) => string | undefined;
 }
 
-export function MarkdownPreview({ content, resolveAssetUrl }: MarkdownPreviewProps) {
+export function MarkdownPreview({
+  content,
+  resolveAssetUrl,
+  resolveImageUrl,
+}: MarkdownPreviewProps) {
   const { body, entries } = parseFrontmatter(content);
   const components: Components = {
     h1: ({ children }) => <h1 className="md-h md-h1">{children}</h1>,
@@ -133,7 +138,9 @@ export function MarkdownPreview({ content, resolveAssetUrl }: MarkdownPreviewPro
     },
     img: ({ alt, src, title }) => {
       const assetId = assetIdFromMarkdownUrl(src);
-      const resolvedSrc = assetId ? resolveAssetUrl?.(assetId) : src;
+      const resolvedSrc = assetId
+        ? resolveAssetUrl?.(assetId)
+        : resolveImageUrl?.(src ?? '') || src;
       return (
         <img
           className="md-img"

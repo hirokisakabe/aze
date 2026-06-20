@@ -2,6 +2,8 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
+import { fsAssetMarkdownUrl, fsAssetPath } from '../repository/assets';
+
 import { createNotesWatcher, type NotesWatcher } from './notes-watcher';
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -20,10 +22,12 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
  * - `PUT    /one`           → { note: Note }     (body: Note。作成 or 上書き)
  * - `DELETE /one?path=...`  → { ok: true }
  * - `POST   /rename`        → { ok: true }       (body: { oldPath, newPath })
+ * - `POST   /assets`        → { path, markdownUrl } (body: image asset JSON)
+ * - `GET    /assets/...`    → 画像ファイル本体
  * - `GET    /events`        → text/event-stream  (外部からのファイル編集の auto-reload 用 SSE。issue #87)
  *
  * 制約:
- * - 画像 / wikilink は未対応 (notes のみ)。
+ * - wikilink は未対応。
  * - created/updated は frontmatter ではなく fs の birthtime / mtime から導出する。
  *   title: frontmatter との統一は issue #78 の「詰めるべき点」として後回し。
  */
@@ -37,6 +41,17 @@ interface FsNote {
 
 const IGNORED_DIRS = new Set(['node_modules']);
 const dateFormat = new Intl.DateTimeFormat('sv-SE');
+const IMAGE_MIME_BY_EXT = new Map([
+  ['.avif', 'image/avif'],
+  ['.bmp', 'image/bmp'],
+  ['.gif', 'image/gif'],
+  ['.jpg', 'image/jpeg'],
+  ['.jpeg', 'image/jpeg'],
+  ['.png', 'image/png'],
+  ['.svg', 'image/svg+xml'],
+  ['.webp', 'image/webp'],
+]);
+const IMAGE_EXT_BY_MIME = new Map(Array.from(IMAGE_MIME_BY_EXT, ([ext, mime]) => [mime, ext]));
 
 /** 先頭の `~` をホームディレクトリに展開する。CLI / plugin の notes ディレクトリ指定で共有する。 */
 export function expandHome(p: string): string {
@@ -59,6 +74,18 @@ export function resolveInNotesDir(
   // API の契約は「notes ディレクトリ相対パス」。絶対パスは path.resolve が notesRoot を無視して
   // しまい、たまたま notes ディレクトリ内を指すと note.path に絶対パスが混入するため明示的に弾く。
   if (path.isAbsolute(rel)) return null;
+  const abs = path.resolve(notesRoot, rel);
+  if (abs !== notesRoot && !abs.startsWith(notesRoot + path.sep)) return null;
+  return abs;
+}
+
+/** rel が notes ディレクトリ配下の画像ファイルを指すことを保証する。逸脱したら null。 */
+export function resolveAssetInNotesDir(
+  notesRoot: string,
+  rel: string | null | undefined
+): string | null {
+  if (!rel || path.isAbsolute(rel) || rel.includes('\0')) return null;
+  if (!IMAGE_MIME_BY_EXT.has(path.extname(rel).toLowerCase())) return null;
   const abs = path.resolve(notesRoot, rel);
   if (abs !== notesRoot && !abs.startsWith(notesRoot + path.sep)) return null;
   return abs;
@@ -141,6 +168,19 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body));
 }
 
+function sendBytes(res: ServerResponse, status: number, body: Buffer, contentType: string): void {
+  res.statusCode = status;
+  res.setHeader('Content-Type', contentType);
+  res.setHeader('Cache-Control', 'no-cache');
+  res.end(body);
+}
+
+function filenameWithImageExtension(filename: string, mimeType: string): string {
+  if (IMAGE_MIME_BY_EXT.has(path.extname(filename).toLowerCase())) return filename;
+  const extension = IMAGE_EXT_BY_MIME.get(mimeType.toLowerCase());
+  return extension ? `${filename || 'image'}${extension}` : filename;
+}
+
 /**
  * 1 エンドポイントの処理に必要な値をまとめた context。各ハンドラは必要な field だけ
  * 分割代入で受け取る (未使用引数を避ける)。`url` は handle() でパース済みのものを共有する。
@@ -212,6 +252,58 @@ async function renameNote({ req, res, notesRoot }: RouteContext): Promise<void> 
   sendJson(res, 200, { ok: true });
 }
 
+/** POST /assets : image asset を notes ディレクトリ配下へ保存する。 */
+async function postAsset({ req, res, notesRoot }: RouteContext): Promise<void> {
+  const payload = parseJsonObject(await readBody(req));
+  if (!payload) return sendJson(res, 400, { error: 'invalid body' });
+
+  const { id, notePath, filename, mimeType, data } = payload;
+  if (
+    typeof id !== 'string' ||
+    typeof notePath !== 'string' ||
+    typeof filename !== 'string' ||
+    typeof mimeType !== 'string' ||
+    typeof data !== 'string' ||
+    !mimeType.startsWith('image/')
+  ) {
+    return sendJson(res, 400, { error: 'invalid body' });
+  }
+  if (!resolveInNotesDir(notesRoot, notePath)) {
+    return sendJson(res, 400, { error: 'invalid note path' });
+  }
+
+  const assetPath = fsAssetPath(id, filenameWithImageExtension(filename, mimeType));
+  const abs = resolveAssetInNotesDir(notesRoot, assetPath);
+  if (!abs) return sendJson(res, 400, { error: 'invalid asset path' });
+
+  await fs.mkdir(path.dirname(abs), { recursive: true });
+  await fs.writeFile(abs, Buffer.from(data, 'base64'));
+  sendJson(res, 200, {
+    path: assetPath,
+    markdownUrl: fsAssetMarkdownUrl(notePath, assetPath),
+  });
+}
+
+/** GET /assets/... : notes ディレクトリ配下の画像ファイルを返す。 */
+async function getAsset({ res, notesRoot, url }: RouteContext): Promise<void> {
+  const encodedRel = url.pathname.slice('/assets/'.length);
+  let rel: string;
+  try {
+    rel = decodeURIComponent(encodedRel);
+  } catch {
+    return sendJson(res, 400, { error: 'invalid path' });
+  }
+  const abs = resolveAssetInNotesDir(notesRoot, rel);
+  if (!abs) return sendJson(res, 400, { error: 'invalid path' });
+  const mimeType = IMAGE_MIME_BY_EXT.get(path.extname(rel).toLowerCase());
+  if (!mimeType) return sendJson(res, 400, { error: 'invalid path' });
+  try {
+    sendBytes(res, 200, await fs.readFile(abs), mimeType);
+  } catch {
+    sendJson(res, 404, { error: 'not found' });
+  }
+}
+
 /**
  * method + pathname → ハンドラのルーティングテーブル。handle() はこの表を引くだけで、
  * 処理本体は各エンドポイント関数に委ねる。マッチしなければ末尾の 404 にフォールバックする。
@@ -223,6 +315,7 @@ const routes: ReadonlyArray<{ method: string; pathname: string; handler: RouteHa
   { method: 'PUT', pathname: '/one', handler: putNote },
   { method: 'DELETE', pathname: '/one', handler: deleteNote },
   { method: 'POST', pathname: '/rename', handler: renameNote },
+  { method: 'POST', pathname: '/assets', handler: postAsset },
 ];
 
 async function handle(req: IncomingMessage, res: ServerResponse, notesRoot: string): Promise<void> {
@@ -233,6 +326,11 @@ async function handle(req: IncomingMessage, res: ServerResponse, notesRoot: stri
   // `pathname === ''` 分岐を防御的に踏襲し、空文字なら '/' と同一視する。
   const pathname = url.pathname === '' ? '/' : url.pathname;
   const method = req.method ?? 'GET';
+
+  if (method === 'GET' && pathname.startsWith('/assets/')) {
+    await getAsset({ req, res, notesRoot, url });
+    return;
+  }
 
   const route = routes.find((r) => r.method === method && r.pathname === pathname);
   if (!route) {

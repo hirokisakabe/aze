@@ -119,6 +119,18 @@ describe('MarkdownPreview', () => {
     expect(img!.getAttribute('loading')).toBe('lazy');
   });
 
+  it('相対画像は表示用 URL に解決できる', () => {
+    const { container } = render(
+      <MarkdownPreview
+        content="![local](assets/image.png)"
+        resolveImageUrl={(src) => `/api/notes/assets/${src}`}
+      />
+    );
+    const img = container.querySelector('img');
+    expect(img).not.toBeNull();
+    expect(img!.getAttribute('src')).toBe('/api/notes/assets/assets/image.png');
+  });
+
   it('タスクリストを ul.md-tasklist に変換する', () => {
     const { container } = render(<MarkdownPreview content={'- [ ] TODO\n- [x] Done'} />);
     const ul = container.querySelector('ul');

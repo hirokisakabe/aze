@@ -2,9 +2,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { FsNotesRepository } from './fs-notes-repository';
 
-import type { Note } from '../lib/data';
+import type { ImageAsset, Note } from '../lib/data';
 
 const NOTES: Note[] = [{ path: 'a.md', created: '2024-01-01', updated: '2024-01-02', body: '# a' }];
+
+function imageAsset(overrides: Partial<ImageAsset> = {}): ImageAsset {
+  return {
+    id: 'asset-a',
+    notePath: 'sub/note.md',
+    filename: 'screen.png',
+    mimeType: 'image/png',
+    blob: new Blob(['image-bytes'], { type: 'image/png' }),
+    created: '2024-01-01',
+    ...overrides,
+  };
+}
 
 /** auto-reload (SSE) 用の最小 EventSource スタブ。生成インスタンスを記録し、change を手動 dispatch できる。 */
 class MockEventSource {
@@ -106,6 +118,43 @@ describe('FsNotesRepository', () => {
 
     await expect(repo.getMountInfo()).resolves.toEqual({ mountPath });
     expect(fetch).toHaveBeenCalledWith('/api/notes/meta', undefined);
+  });
+
+  it('addImageAssets は画像を base64 化して server API へ保存し Markdown URL を返す', async () => {
+    vi.mocked(fetch).mockImplementationOnce(async (url, init) => {
+      expect(url).toBe('/api/notes/assets');
+      expect(init?.method).toBe('POST');
+      expect(typeof init?.body).toBe('string');
+      const body = JSON.parse(init?.body as string) as Record<string, string>;
+      expect(body).toMatchObject({
+        id: 'asset-a',
+        notePath: 'sub/note.md',
+        filename: 'screen.png',
+        mimeType: 'image/png',
+        data: btoa('image-bytes'),
+      });
+      return new Response(JSON.stringify({ markdownUrl: '../assets/asset-a-screen.png' }), {
+        status: 200,
+      });
+    });
+
+    const repo = new FsNotesRepository();
+
+    await expect(repo.addImageAssets([imageAsset()])).resolves.toEqual([
+      '../assets/asset-a-screen.png',
+    ]);
+  });
+
+  it('resolveImageUrl は Markdown の相対画像参照を server API URL に変換する', () => {
+    const repo = new FsNotesRepository();
+
+    expect(repo.resolveImageUrl('sub/note.md', '../assets/my image.png')).toBe(
+      '/api/notes/assets/assets/my%20image.png'
+    );
+    expect(repo.resolveImageUrl('sub/note.md', 'assets/local.png')).toBe(
+      '/api/notes/assets/sub/assets/local.png'
+    );
+    expect(repo.resolveImageUrl('sub/note.md', 'https://example.com/image.png')).toBeUndefined();
   });
 
   it('最後の unsubscribe で EventSource を閉じ、再 subscribe で張り直す', () => {

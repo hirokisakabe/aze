@@ -8,7 +8,6 @@ import { getParentFolder } from '../lib/note-path';
 import { formatPageTitle } from '../lib/page-title';
 import { indentText, renderWsOverlay, unindentText, type IndentResult } from '../lib/text-editing';
 import {
-  assetMarkdownUrl,
   createAssetId,
   extractAssetIdsFromMarkdown,
   exportedAssetPath,
@@ -77,6 +76,10 @@ export default function App() {
     return next;
   }, [imageAssets]);
   const resolveAssetUrl = useCallback((id: string) => assetUrls.get(id), [assetUrls]);
+  const resolveImageUrl = useCallback(
+    (src: string) => (current ? notesRepository.resolveImageUrl(current.path, src) : undefined),
+    [current]
+  );
 
   useEffect(() => {
     let alive = true;
@@ -264,16 +267,12 @@ export default function App() {
             mimeType: file.type,
             blob: file,
             created,
-            markdown: `![${readableAltText(file.name)}](${assetMarkdownUrl(id)})`,
           };
         });
-        await notesRepository.addImageAssets(
-          assets.map(({ markdown, ...asset }) => {
-            void markdown;
-            return asset;
-          })
+        const markdownUrls = await notesRepository.addImageAssets(assets);
+        const markdownLines = assets.map(
+          (asset, index) => `![${readableAltText(asset.filename)}](${markdownUrls[index]})`
         );
-        const markdownLines = assets.map((asset) => asset.markdown);
         insertMarkdownAtCursor(markdownLines.join('\n'));
       } catch {
         setAssetError('画像を保存できませんでした。本文は変更していません。');
@@ -454,7 +453,11 @@ export default function App() {
                 </div>
                 <article className="doc">
                   {current && (
-                    <MarkdownPreview content={current.body} resolveAssetUrl={resolveAssetUrl} />
+                    <MarkdownPreview
+                      content={current.body}
+                      resolveAssetUrl={resolveAssetUrl}
+                      resolveImageUrl={resolveImageUrl}
+                    />
                   )}
                 </article>
               </div>
