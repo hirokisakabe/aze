@@ -29,7 +29,7 @@ function safeExportFilename(asset: ImageAsset) {
   return safeAssetFilename(asset.id, asset.filename);
 }
 
-export function safeAssetFilename(id: string, filename: string) {
+function safeAssetFilename(id: string, filename: string) {
   const cleanId =
     id
       .replace(/[\\/]/g, '-')
