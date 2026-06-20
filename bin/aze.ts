@@ -36,48 +36,59 @@ function printUsage(): void {
 }
 
 export function parseServeArgs(argv: string[]): ServeOptions {
-  let values: { port?: string; help?: boolean };
-  let positionals: string[];
-  try {
-    ({ values, positionals } = parseArgs({
-      args: argv,
-      options: {
-        port: { type: 'string', short: 'p' },
-        help: { type: 'boolean', short: 'h' },
-      },
-      allowPositionals: true,
-    }));
-  } catch (err) {
-    // 未知オプション・値欠落などは parseArgs が throw する。従来の usage 表示 + 非ゼロ終了に揃える。
-    const message = err instanceof Error ? err.message : String(err);
-    const unknownOption = /Unknown option '([^']+)'/.exec(message);
-    console.error(unknownOption ? `aze: unknown argument "${unknownOption[1]}"` : `aze: ${message}`);
-    printUsage();
-    process.exit(1);
+  // 字句解析 (--port= / -p / -- 境界など) は parseArgs に委譲しつつ、未知引数の検出・
+  // help 優先・--port 値欠落の扱いといった意味論は従来の左→右の評価順をそのまま保つため、
+  // strict を切って tokens を自前で走査する (strict:false は未知オプションでも throw しない)。
+  const { tokens } = parseArgs({
+    args: argv,
+    options: {
+      port: { type: 'string', short: 'p' },
+      help: { type: 'boolean', short: 'h' },
+    },
+    allowPositionals: true,
+    strict: false,
+    tokens: true,
+  });
+
+  let notesDir: string | undefined;
+  let portSeen = false;
+  let portValue: string | undefined;
+  for (const token of tokens) {
+    if (token.kind === 'option') {
+      if (token.name === 'help') {
+        // --help / -h は他の引数より優先し、即座に usage を表示して正常終了する。
+        printUsage();
+        process.exit(0);
+      } else if (token.name === 'port') {
+        portSeen = true;
+        portValue = token.value; // 値欠落時は undefined のまま下のバリデーションで弾く。
+      } else {
+        console.error(`aze: unknown argument "${token.rawName}"`);
+        printUsage();
+        process.exit(1);
+      }
+    } else if (token.kind === 'positional') {
+      // 2 つ目以降の位置引数は未知引数として弾く。
+      if (notesDir === undefined) {
+        notesDir = token.value;
+      } else {
+        console.error(`aze: unknown argument "${token.value}"`);
+        printUsage();
+        process.exit(1);
+      }
+    }
+    // option-terminator (`--`) は読み飛ばす (以降は positional として解釈済み)。
   }
 
-  if (values.help) {
-    printUsage();
-    process.exit(0);
-  }
-
-  // 2 つ目以降の位置引数は受け付けない (parseArgs は複数 positional を許すため自前で弾く)。
-  if (positionals.length > 1) {
-    console.error(`aze: unknown argument "${positionals[1]}"`);
-    printUsage();
-    process.exit(1);
-  }
-
-  const notesDir = positionals[0];
-  if (!notesDir) {
+  if (notesDir === undefined) {
     console.error('aze: <notes-dir> is required');
     printUsage();
     process.exit(1);
   }
 
-  const port = values.port === undefined ? DEFAULT_PORT : Number(values.port);
+  const port = portSeen ? Number(portValue) : DEFAULT_PORT;
   if (!Number.isInteger(port) || port < 0 || port > 65535) {
-    console.error(`aze: invalid --port "${values.port}"`);
+    console.error(`aze: invalid --port "${portValue ?? port}"`);
     process.exit(1);
   }
 

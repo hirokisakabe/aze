@@ -101,6 +101,13 @@ describe('parseServeArgs', () => {
   it('負のポートを弾く', () => {
     expect(() => parseServeArgs(['notes', '--port', '-1'])).toThrow(ExitError);
     expect(spies.exit).toHaveBeenCalledWith(1);
+    expect(spies.error).toHaveBeenCalledWith(expect.stringContaining('invalid --port'));
+  });
+
+  it('--port の値欠落を弾く', () => {
+    expect(() => parseServeArgs(['notes', '--port'])).toThrow(ExitError);
+    expect(spies.exit).toHaveBeenCalledWith(1);
+    expect(spies.error).toHaveBeenCalledWith(expect.stringContaining('invalid --port'));
   });
 
   it('非整数のポートを弾く', () => {
@@ -121,6 +128,12 @@ describe('parseServeArgs', () => {
 
   it('-h でヘルプを表示し正常終了する', () => {
     expect(() => parseServeArgs(['-h'])).toThrow(ExitError);
+    expect(spies.exit).toHaveBeenCalledWith(0);
+    expect(spies.log).toHaveBeenCalledWith(expect.stringContaining('aze serve'));
+  });
+
+  it('--help は後続の未知引数より優先して正常終了する', () => {
+    expect(() => parseServeArgs(['--help', '--bogus'])).toThrow(ExitError);
     expect(spies.exit).toHaveBeenCalledWith(0);
     expect(spies.log).toHaveBeenCalledWith(expect.stringContaining('aze serve'));
   });
