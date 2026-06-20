@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { FsNotesRepository } from './fs-notes-repository';
 
-import type { Note } from './data';
+import type { Note } from '../lib/data';
 
 const NOTES: Note[] = [{ path: 'a.md', created: '2024-01-01', updated: '2024-01-02', body: '# a' }];
 

@@ -3,7 +3,7 @@ import { liveQuery } from 'dexie';
 import { db } from './db';
 import { FsNotesRepository } from './fs-notes-repository';
 
-import type { ImageAsset, Note } from './data';
+import type { ImageAsset, Note } from '../lib/data';
 
 export type Unsubscribe = () => void;
 

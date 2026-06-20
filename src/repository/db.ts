@@ -1,6 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 
-import type { ImageAsset, Note } from './data';
+import type { ImageAsset, Note } from '../lib/data';
 
 interface Setting {
   key: string;

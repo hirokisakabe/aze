@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from './db';
 import { IndexedDbNotesRepository } from './notes-repository';
 
-import type { ImageAsset, Note } from './data';
+import type { ImageAsset, Note } from '../lib/data';
 
 // 本 suite は app の DOM テスト経由ではなく IndexedDbNotesRepository を直接
 // インスタンス化して検証する。特に NotesRepository interface が contract として

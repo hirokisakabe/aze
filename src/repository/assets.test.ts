@@ -10,7 +10,7 @@ import {
   rewriteAssetUrlsForExport,
 } from './assets';
 
-import type { ImageAsset } from './data';
+import type { ImageAsset } from '../lib/data';
 
 function asset(id: string, filename = `${id}.png`): ImageAsset {
   return {

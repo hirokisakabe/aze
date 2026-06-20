@@ -1,5 +1,5 @@
-import type { ImageAsset, Note } from './data';
 import type { NotesRepository, Unsubscribe } from './notes-repository';
+import type { ImageAsset, Note } from '../lib/data';
 
 /**
  * filesystem driver (最小実験版)。`VITE_STORAGE_DRIVER=fs` の時に選択され、dev サーバーに
