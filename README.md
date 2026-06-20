@@ -15,7 +15,6 @@
 ```sh
 npx aze-cli serve ./notes
 npx aze-cli serve ./notes --port 4321     # ポート指定 (default: 4321)
-npx aze-cli --version                     # バージョン表示 (-V も可)
 ```
 
 ## 特徴
