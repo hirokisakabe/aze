@@ -76,6 +76,26 @@ function parseJsonObject(raw: string): Record<string, unknown> | null {
   }
 }
 
+/**
+ * request body を JSON object としてパースし、指定 key がすべて string であることを検証する。
+ * パース失敗 / object でない / いずれかの key が非 string の場合は null (= 呼び出し側で 400)。
+ * 各エンドポイントに散らばっていた `typeof x !== 'string'` の手書きバリデーションをここに集約する。
+ */
+async function readJsonStringFields<K extends string>(
+  req: IncomingMessage,
+  keys: readonly K[]
+): Promise<Record<K, string> | null> {
+  const payload = parseJsonObject(await readBody(req));
+  if (!payload) return null;
+  const out = {} as Record<K, string>;
+  for (const key of keys) {
+    const value = payload[key];
+    if (typeof value !== 'string') return null;
+    out[key] = value;
+  }
+  return out;
+}
+
 async function listMarkdown(notesRoot: string, dir = ''): Promise<string[]> {
   const entries = await fs.readdir(path.join(notesRoot, dir), { withFileTypes: true });
   const out: string[] = [];
@@ -120,70 +140,99 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body));
 }
 
+/**
+ * 1 エンドポイントの処理に必要な値をまとめた context。各ハンドラは必要な field だけ
+ * 分割代入で受け取る (未使用引数を避ける)。`url` は handle() でパース済みのものを共有する。
+ */
+interface RouteContext {
+  req: IncomingMessage;
+  res: ServerResponse;
+  notesRoot: string;
+  url: URL;
+}
+
+type RouteHandler = (ctx: RouteContext) => Promise<void>;
+
+/** GET / : notes ディレクトリ配下の .md を再帰列挙する。 */
+async function listNotes({ res, notesRoot }: RouteContext): Promise<void> {
+  const rels = await listMarkdown(notesRoot);
+  const notes = await Promise.all(rels.map((rel) => readNote(notesRoot, rel)));
+  sendJson(res, 200, { notes });
+}
+
+/** GET /one?path= : 単一 note を返す。存在しなければ 404。 */
+async function getNote({ res, notesRoot, url }: RouteContext): Promise<void> {
+  const rel = url.searchParams.get('path');
+  if (rel === null || !resolveInNotesDir(notesRoot, rel)) {
+    return sendJson(res, 400, { error: 'invalid path' });
+  }
+  try {
+    const note = await readNote(notesRoot, rel);
+    sendJson(res, 200, { note });
+  } catch {
+    sendJson(res, 404, { error: 'not found' });
+  }
+}
+
+/** PUT /one : body の note を作成 or 上書きする。 */
+async function putNote({ req, res, notesRoot }: RouteContext): Promise<void> {
+  const fields = await readJsonStringFields(req, ['path', 'body']);
+  if (!fields) return sendJson(res, 400, { error: 'invalid body' });
+  const abs = resolveInNotesDir(notesRoot, fields.path);
+  if (!abs) return sendJson(res, 400, { error: 'invalid path' });
+  await fs.mkdir(path.dirname(abs), { recursive: true });
+  await fs.writeFile(abs, fields.body, 'utf8');
+  const saved = await readNote(notesRoot, fields.path);
+  sendJson(res, 200, { note: saved });
+}
+
+/** DELETE /one?path= : note を削除する。 */
+async function deleteNote({ res, notesRoot, url }: RouteContext): Promise<void> {
+  const abs = resolveInNotesDir(notesRoot, url.searchParams.get('path'));
+  if (!abs) return sendJson(res, 400, { error: 'invalid path' });
+  await fs.rm(abs, { force: true });
+  sendJson(res, 200, { ok: true });
+}
+
+/** POST /rename : note を移動する。 */
+async function renameNote({ req, res, notesRoot }: RouteContext): Promise<void> {
+  const fields = await readJsonStringFields(req, ['oldPath', 'newPath']);
+  if (!fields) return sendJson(res, 400, { error: 'invalid body' });
+  const absOld = resolveInNotesDir(notesRoot, fields.oldPath);
+  const absNew = resolveInNotesDir(notesRoot, fields.newPath);
+  if (!absOld || !absNew) return sendJson(res, 400, { error: 'invalid path' });
+  await fs.mkdir(path.dirname(absNew), { recursive: true });
+  await fs.rename(absOld, absNew);
+  sendJson(res, 200, { ok: true });
+}
+
+/**
+ * method + pathname → ハンドラのルーティングテーブル。handle() はこの表を引くだけで、
+ * 処理本体は各エンドポイント関数に委ねる。マッチしなければ末尾の 404 にフォールバックする。
+ */
+const routes: ReadonlyArray<{ method: string; pathname: string; handler: RouteHandler }> = [
+  { method: 'GET', pathname: '/', handler: listNotes },
+  { method: 'GET', pathname: '/one', handler: getNote },
+  { method: 'PUT', pathname: '/one', handler: putNote },
+  { method: 'DELETE', pathname: '/one', handler: deleteNote },
+  { method: 'POST', pathname: '/rename', handler: renameNote },
+];
+
 async function handle(req: IncomingMessage, res: ServerResponse, notesRoot: string): Promise<void> {
   // 呼び出し側が `/api/notes` mount 部分を req.url から取り除いている前提
   // (connect の `use('/api/notes', ...)` / CLI のプレフィックス除去)。
   const url = new URL(req.url ?? '/', 'http://localhost');
-  const { pathname } = url;
+  // URL パース後の pathname は通常 '/' 以上で '' にはならないが、元実装の
+  // `pathname === ''` 分岐を防御的に踏襲し、空文字なら '/' と同一視する。
+  const pathname = url.pathname === '' ? '/' : url.pathname;
   const method = req.method ?? 'GET';
 
-  if (method === 'GET' && (pathname === '/' || pathname === '')) {
-    const rels = await listMarkdown(notesRoot);
-    const notes = await Promise.all(rels.map((rel) => readNote(notesRoot, rel)));
-    sendJson(res, 200, { notes });
+  const route = routes.find((r) => r.method === method && r.pathname === pathname);
+  if (!route) {
+    sendJson(res, 404, { error: `unhandled ${method} ${pathname}` });
     return;
   }
-
-  if (pathname === '/one') {
-    if (method === 'GET') {
-      const abs = resolveInNotesDir(notesRoot, url.searchParams.get('path'));
-      const rel = url.searchParams.get('path');
-      if (!abs || !rel) return sendJson(res, 400, { error: 'invalid path' });
-      try {
-        const note = await readNote(notesRoot, rel);
-        return sendJson(res, 200, { note });
-      } catch {
-        return sendJson(res, 404, { error: 'not found' });
-      }
-    }
-    if (method === 'PUT') {
-      const payload = parseJsonObject(await readBody(req));
-      const notePath = payload?.path;
-      const body = payload?.body;
-      if (typeof notePath !== 'string' || typeof body !== 'string') {
-        return sendJson(res, 400, { error: 'invalid body' });
-      }
-      const abs = resolveInNotesDir(notesRoot, notePath);
-      if (!abs) return sendJson(res, 400, { error: 'invalid path' });
-      await fs.mkdir(path.dirname(abs), { recursive: true });
-      await fs.writeFile(abs, body, 'utf8');
-      const saved = await readNote(notesRoot, notePath);
-      return sendJson(res, 200, { note: saved });
-    }
-    if (method === 'DELETE') {
-      const abs = resolveInNotesDir(notesRoot, url.searchParams.get('path'));
-      if (!abs) return sendJson(res, 400, { error: 'invalid path' });
-      await fs.rm(abs, { force: true });
-      return sendJson(res, 200, { ok: true });
-    }
-  }
-
-  if (pathname === '/rename' && method === 'POST') {
-    const payload = parseJsonObject(await readBody(req));
-    const oldPath = payload?.oldPath;
-    const newPath = payload?.newPath;
-    if (typeof oldPath !== 'string' || typeof newPath !== 'string') {
-      return sendJson(res, 400, { error: 'invalid body' });
-    }
-    const absOld = resolveInNotesDir(notesRoot, oldPath);
-    const absNew = resolveInNotesDir(notesRoot, newPath);
-    if (!absOld || !absNew) return sendJson(res, 400, { error: 'invalid path' });
-    await fs.mkdir(path.dirname(absNew), { recursive: true });
-    await fs.rename(absOld, absNew);
-    return sendJson(res, 200, { ok: true });
-  }
-
-  sendJson(res, 404, { error: `unhandled ${method} ${pathname}` });
+  await route.handler({ req, res, notesRoot, url });
 }
 
 const SSE_KEEPALIVE_MS = 30_000;
