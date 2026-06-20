@@ -1,5 +1,4 @@
 import tseslint from "typescript-eslint";
-import pluginReact from "eslint-plugin-react";
 import pluginReactHooks from "eslint-plugin-react-hooks";
 import importX from "eslint-plugin-import-x";
 import unusedImports from "eslint-plugin-unused-imports";
@@ -71,22 +70,14 @@ export default tseslint.config(
       ],
     },
   },
-  // React 固有ルールは SPA ソース (src) にのみ適用する。
+  // React Hooks ルールは SPA ソース (src) にのみ適用する。
   {
     files: ["src/**/*.{ts,tsx}"],
     plugins: {
-      react: pluginReact,
       "react-hooks": pluginReactHooks,
     },
     rules: {
-      "react/react-in-jsx-scope": "off",
-      "react/prop-types": "off",
       ...pluginReactHooks.configs.recommended.rules,
-    },
-    settings: {
-      react: {
-        version: "detect",
-      },
     },
   },
   // テストは内部状態への意図的なアクセスやモック注入で any/unbound を多用するため、
