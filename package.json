@@ -1,7 +1,7 @@
 {
   "name": "aze-cli",
   "version": "0.5.0",
-  "description": "ローカルの Markdown ディレクトリをブラウザの aze エディタで編集する CLI (aze serve)",
+  "description": "ローカルの Markdown ディレクトリをブラウザで編集する CLI",
   "type": "module",
   "bin": {
     "aze": "dist-cli/aze.js"

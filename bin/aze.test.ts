@@ -128,6 +128,11 @@ describe('parseServeArgs', () => {
     expect(() => parseServeArgs(['--help'])).toThrow(ExitError);
     expect(spies.exit).toHaveBeenCalledWith(0);
     expect(spies.log).toHaveBeenCalledWith(expect.stringContaining('aze serve'));
+    expect(spies.log).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'ローカルの Markdown ディレクトリをブラウザで編集するためのサーバーを起動する。'
+      )
+    );
   });
 
   it('-h でヘルプを表示し正常終了する', () => {

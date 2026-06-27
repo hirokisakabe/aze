@@ -35,7 +35,7 @@ interface ServeOptions {
 function printUsage(): void {
   console.log(`aze serve <notes-dir> [--port <port>]
 
-ローカルの Markdown ディレクトリを aze エディタで編集する (127.0.0.1 のみ・ネットワーク非公開)。
+ローカルの Markdown ディレクトリをブラウザで編集するためのサーバーを起動する。
 
   <notes-dir>      notes ディレクトリ (~ 展開対応)
   -p, --port       待ち受けポート (default: ${DEFAULT_PORT})
