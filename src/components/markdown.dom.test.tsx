@@ -1,5 +1,5 @@
 import { fireEvent, render } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { MarkdownPreview } from './markdown';
 
@@ -105,6 +105,43 @@ describe('MarkdownPreview', () => {
     expect(a!.getAttribute('target')).toBeNull();
     expect(a!.getAttribute('rel')).toBeNull();
     expect(fireEvent.click(a!)).toBe(false);
+  });
+
+  it('解決済み内部ノートリンクをクリックすると遷移ハンドラを呼ぶ', () => {
+    const onOpenNoteLink = vi.fn();
+    const { container } = render(
+      <MarkdownPreview
+        content="[other](./other.md)"
+        resolveNoteLink={() => ({ status: 'resolved', path: 'folder/other.md' })}
+        onOpenNoteLink={onOpenNoteLink}
+      />
+    );
+
+    const a = container.querySelector('a');
+    expect(a).not.toBeNull();
+    expect(a!.getAttribute('data-note-link-state')).toBe('resolved');
+    expect(a!.getAttribute('data-note-path')).toBe('folder/other.md');
+    expect(fireEvent.click(a!)).toBe(false);
+    expect(onOpenNoteLink).toHaveBeenCalledWith('folder/other.md');
+  });
+
+  it('未解決内部ノートリンクを視覚的に区別しクリックしても遷移しない', () => {
+    const onOpenNoteLink = vi.fn();
+    const { container } = render(
+      <MarkdownPreview
+        content="[missing](./missing.md)"
+        resolveNoteLink={() => ({ status: 'missing', path: 'folder/missing.md' })}
+        onOpenNoteLink={onOpenNoteLink}
+      />
+    );
+
+    const a = container.querySelector('a');
+    expect(a).not.toBeNull();
+    expect(a!.className).toContain('md-link-missing');
+    expect(a!.getAttribute('aria-invalid')).toBe('true');
+    expect(a!.getAttribute('data-note-link-state')).toBe('missing');
+    expect(fireEvent.click(a!)).toBe(false);
+    expect(onOpenNoteLink).not.toHaveBeenCalled();
   });
 
   it('画像に md-img クラスと Markdown の属性が付与される', () => {

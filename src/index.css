@@ -545,6 +545,15 @@ ul.md-list:not(.md-tasklist) > li::before {
   color: var(--link-hover);
   border-bottom-color: var(--link-hover);
 }
+.md-link-missing {
+  color: var(--ink-faint);
+  border-bottom-style: dotted;
+  border-bottom-color: color-mix(in oklab, var(--ink-faint) 72%, transparent);
+}
+.md-link-missing:hover {
+  color: var(--ink-soft);
+  border-bottom-color: var(--ink-soft);
+}
 .md-img {
   display: block;
   width: auto;

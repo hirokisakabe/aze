@@ -43,6 +43,53 @@ describe('ノートを選択すると本文が表示される', () => {
     expect(container.querySelector('.md-frontmatter')).not.toBeNull();
     expect(container.querySelector('.meta-rule')).toBeNull();
   });
+
+  it('Markdown プレビューの相対リンクからノートへ遷移できる', async () => {
+    await db.notes.bulkPut([
+      {
+        path: 'folder/current.md',
+        body: '# Current\n\n[Other](./other.md)\n[Root](../root.md)',
+        created: '2024-01-01',
+        updated: '2024-01-01',
+      },
+      {
+        path: 'folder/other.md',
+        body: '# Other\n\nLinked note.',
+        created: '2024-01-01',
+        updated: '2024-01-01',
+      },
+      {
+        path: 'root.md',
+        body: '# Root\n\nRoot note.',
+        created: '2024-01-01',
+        updated: '2024-01-01',
+      },
+    ]);
+    render(<App />);
+
+    await screen.findByRole('heading', { name: 'Current' });
+    await userEvent.click(screen.getByRole('link', { name: 'Other' }));
+    await screen.findByText('Linked note.');
+
+    await userEvent.click(sidebarText('Current'));
+    await userEvent.click(screen.getByRole('link', { name: 'Root' }));
+    await screen.findByText('Root note.');
+  });
+
+  it('存在しない Markdown 相対リンクは未解決リンクとして表示する', async () => {
+    await db.notes.put({
+      path: 'current.md',
+      body: '# Current\n\n[Missing](./missing.md)',
+      created: '2024-01-01',
+      updated: '2024-01-01',
+    });
+    render(<App />);
+
+    const missing = await screen.findByRole('link', { name: 'Missing' });
+    expect(missing.className).toContain('md-link-missing');
+    expect(missing.getAttribute('aria-invalid')).toBe('true');
+    expect(missing.getAttribute('data-note-path')).toBe('missing.md');
+  });
 });
 
 describe('Tweaks UI は存在しない', () => {
