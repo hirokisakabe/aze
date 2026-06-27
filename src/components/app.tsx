@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } fr
 import { useEditorHistory } from '../hooks/use-editor-history';
 import { useRepositorySubscription } from '../hooks/use-repository-subscription';
 import { buildTree, ancestorsOf, type Note } from '../lib/data';
+import { resolveMarkdownNoteLink } from '../lib/markdown-links';
 import { getParentFolder } from '../lib/note-path';
 import { formatPageTitle } from '../lib/page-title';
 import { indentText, renderWsOverlay, unindentText, type IndentResult } from '../lib/text-editing';
@@ -68,6 +69,7 @@ export default function App() {
 
   const tree = useMemo(() => buildTree(notes), [notes]);
   const current = useMemo(() => notes.find((n) => n.path === currentPath), [notes, currentPath]);
+  const notePaths = useMemo(() => new Set(notes.map((note) => note.path)), [notes]);
   const assetUrls = useMemo(() => {
     const next = new Map<string, string>();
     for (const asset of imageAssets) {
@@ -79,6 +81,10 @@ export default function App() {
   const resolveImageUrl = useCallback(
     (src: string) => (current ? notesRepository.resolveImageUrl(current.path, src) : undefined),
     [current]
+  );
+  const resolveNoteLink = useCallback(
+    (href: string) => (current ? resolveMarkdownNoteLink(current.path, href, notePaths) : null),
+    [current, notePaths]
   );
 
   useEffect(() => {
@@ -456,6 +462,8 @@ export default function App() {
                       content={current.body}
                       resolveAssetUrl={resolveAssetUrl}
                       resolveImageUrl={resolveImageUrl}
+                      resolveNoteLink={resolveNoteLink}
+                      onOpenNoteLink={(path) => void openNote(path)}
                     />
                   )}
                 </article>

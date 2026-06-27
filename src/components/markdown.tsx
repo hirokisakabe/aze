@@ -8,6 +8,7 @@ import { parseFrontmatter } from '../lib/frontmatter';
 import { assetIdFromMarkdownUrl } from '../repository/assets';
 
 import type { FrontmatterEntry } from '../lib/frontmatter';
+import type { MarkdownNoteLinkResolution } from '../lib/markdown-links';
 import type { ReactElement, ReactNode } from 'react';
 import type { Components } from 'react-markdown';
 
@@ -97,12 +98,16 @@ interface MarkdownPreviewProps {
   content: string;
   resolveAssetUrl?: (id: string) => string | undefined;
   resolveImageUrl?: (src: string) => string | undefined;
+  resolveNoteLink?: (href: string) => MarkdownNoteLinkResolution | null;
+  onOpenNoteLink?: (path: string) => void;
 }
 
 export function MarkdownPreview({
   content,
   resolveAssetUrl,
   resolveImageUrl,
+  resolveNoteLink,
+  onOpenNoteLink,
 }: MarkdownPreviewProps) {
   const { body, entries } = parseFrontmatter(content);
   const components: Components = {
@@ -124,13 +129,27 @@ export function MarkdownPreview({
     hr: () => <hr className="md-hr" />,
     a: ({ children, href }) => {
       const external = isExternalUrl(href);
+      const noteLink = !external && href ? resolveNoteLink?.(href) : null;
+      const missing = noteLink?.status === 'missing';
       return (
         <a
-          className="md-link"
+          className={`md-link${missing ? ' md-link-missing' : ''}`}
           href={href}
           target={external ? '_blank' : undefined}
           rel={external ? 'noreferrer' : undefined}
-          onClick={external ? undefined : (e) => e.preventDefault()}
+          aria-invalid={missing ? 'true' : undefined}
+          data-note-path={noteLink?.path}
+          data-note-link-state={noteLink?.status}
+          onClick={
+            external
+              ? undefined
+              : (e) => {
+                  e.preventDefault();
+                  if (noteLink?.status === 'resolved') {
+                    onOpenNoteLink?.(noteLink.path);
+                  }
+                }
+          }
         >
           {children}
         </a>
