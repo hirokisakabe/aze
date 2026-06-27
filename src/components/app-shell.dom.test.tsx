@@ -26,6 +26,23 @@ describe('ノートを選択すると本文が表示される', () => {
 
     await screen.findByText('Content of note B.');
   });
+
+  it('ノート上部の metadata 表示を保ちつつ余分な divider を出さない', async () => {
+    await db.notes.put({
+      path: 'meta-note.md',
+      body: '---\ntitle: Meta Note\nstatus: living\n---\n# Meta Note\n\nBody.',
+      created: '2024-01-01',
+      updated: '2024-01-02',
+    });
+
+    const { container } = render(<App />);
+
+    await screen.findByText('Body.');
+    expect(screen.getByText('作成 2024-01-01')).not.toBeNull();
+    expect(screen.getByText('更新 2024-01-02')).not.toBeNull();
+    expect(container.querySelector('.md-frontmatter')).not.toBeNull();
+    expect(container.querySelector('.meta-rule')).toBeNull();
+  });
 });
 
 describe('Tweaks UI は存在しない', () => {
