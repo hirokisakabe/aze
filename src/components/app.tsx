@@ -449,7 +449,6 @@ export default function App() {
                     <span className="meta-dot">/</span>
                     <span>更新 {current.updated}</span>
                   </div>
-                  <div className="meta-rule" />
                 </div>
                 <article className="doc">
                   {current && (

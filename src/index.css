@@ -320,7 +320,7 @@ body {
   color: var(--ink-soft);
 }
 .reader .crumb {
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
 /* markdown document */
@@ -335,10 +335,9 @@ body {
 
 /* frontmatter key-value panel */
 .md-frontmatter {
-  margin: 0 0 1.4em;
-  padding: 0.6em 0;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
+  margin: 0 0 1.2em;
+  padding: 0 0 0.8em;
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 72%, transparent);
   font-family: var(--mono);
   font-size: 0.82em;
 }
@@ -346,7 +345,7 @@ body {
   display: grid;
   grid-template-columns: minmax(80px, 0.22fr) 1fr;
   gap: 0.5em 1.2em;
-  padding: 0.22em 0;
+  padding: 0.18em 0;
 }
 .fm-key {
   color: var(--ink-faint);
@@ -563,11 +562,7 @@ ul.md-list:not(.md-tasklist) > li::before {
 
 /* note meta */
 .meta {
-  margin: 0 0 28px;
-}
-.meta-rule {
-  border-top: 1px solid var(--line);
-  margin-top: 12px;
+  margin: 0 0 24px;
 }
 .meta-dates {
   font-family: var(--mono);
@@ -576,8 +571,9 @@ ul.md-list:not(.md-tasklist) > li::before {
   color: var(--ink-faint);
   display: flex;
   align-items: center;
-  gap: 10px;
-  line-height: 1;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  line-height: 1.35;
 }
 .meta-dot {
   opacity: 0.85;
@@ -949,6 +945,16 @@ kbd {
 
   .reader-inner {
     padding-bottom: 144px;
+  }
+
+  .md-frontmatter {
+    padding-bottom: 0.95em;
+  }
+
+  .fm-row {
+    grid-template-columns: 1fr;
+    gap: 0.1em;
+    padding: 0.3em 0;
   }
 
   .editor-inner {
