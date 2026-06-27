@@ -1,5 +1,12 @@
 # aze-cli
 
+## 0.5.2
+
+### Patch Changes
+
+- 5d6bece: Markdown プレビュー内の h3 / h4 見出しとリンクの色を調整し、読み取りやすさを改善しました。
+- c5eadde: Markdown プレビューで標準 Markdown の相対リンクからノート間を移動できるようにしました。
+
 ## 0.5.1
 
 ### Patch Changes
