@@ -328,11 +328,7 @@ export function Sidebar({
       </div>
 
       {ctxMenu && (
-        <div
-          ref={ctxRef}
-          className="sb-ctx-popover"
-          style={{ left: ctxMenu.x, top: ctxMenu.y }}
-        >
+        <div ref={ctxRef} className="sb-ctx-popover" style={{ left: ctxMenu.x, top: ctxMenu.y }}>
           <div className="sb-ctx-menu" role="menu" onKeyDown={handleMenuKeyDown}>
             <button
               ref={copyMenuItemRef}
