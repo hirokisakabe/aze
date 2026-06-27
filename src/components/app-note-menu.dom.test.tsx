@@ -13,8 +13,18 @@ import {
 } from '../test-support/app-test-helpers';
 
 import App from './app';
+import { Sidebar } from './sidebar';
 
 resetStateBeforeEach();
+
+function stubClipboard() {
+  const writeText = vi.fn<Clipboard['writeText']>().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText },
+  });
+  return writeText;
+}
 
 describe('ノート行のメニューからノートを操作できる', () => {
   it('ファイル行の操作ボタンからメニューが表示される', async () => {
@@ -52,12 +62,12 @@ describe('ノート行のメニューからノートを操作できる', () => {
 
     expect(actionButton.getAttribute('aria-expanded')).toBe('true');
     expect(screen.getByRole('menu')).not.toBeNull();
-    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'パス変更' }));
+    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'パスをコピー' }));
 
     await userEvent.keyboard('{ArrowDown}');
-    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: '削除' }));
-    await userEvent.keyboard('{Home}');
     expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'パス変更' }));
+    await userEvent.keyboard('{Home}');
+    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'パスをコピー' }));
     await userEvent.keyboard('{End}');
     expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: '削除' }));
     await userEvent.keyboard('{ArrowUp}');
@@ -66,6 +76,19 @@ describe('ノート行のメニューからノートを操作できる', () => {
 
     expect(screen.queryByRole('menu')).toBeNull();
     expect(document.activeElement).toBe(actionButton);
+  });
+
+  it('ファイル行のパスをクリップボードへコピーできる', async () => {
+    const writeText = stubClipboard();
+    await db.notes.bulkPut([NOTE_A]);
+    render(<App />);
+
+    await findSidebarText('Note A');
+    await openNoteActions('Note A');
+    await userEvent.click(screen.getByText('パスをコピー'));
+
+    expect(writeText).toHaveBeenCalledWith('note-a.md');
+    expect(screen.queryByRole('menu')).toBeNull();
   });
 
   it('開いている操作ボタンをもう一度押すとメニューを閉じる', async () => {
@@ -178,5 +201,80 @@ describe('ノート行のメニューからノートを操作できる', () => {
     });
     await screen.findByText('ノートを選択');
     vi.restoreAllMocks();
+  });
+});
+
+describe('サイドバーの項目パスをコピーできる', () => {
+  it('mountPath がある場合はファイルの絶対パスをコピーする', async () => {
+    const writeText = stubClipboard();
+    render(
+      <Sidebar
+        tree={{
+          name: '',
+          path: '',
+          type: 'folder',
+          children: [{ name: 'note.md', path: 'daily/note.md', type: 'file', title: 'Daily' }],
+        }}
+        expanded={new Set()}
+        currentPath=""
+        onToggle={() => {}}
+        onOpen={() => {}}
+        onNew={() => {}}
+        onExport={() => {}}
+        onDelete={() => {}}
+        onRename={() => {}}
+        count={1}
+        mountPath="/Users/example/notes"
+      />
+    );
+
+    const row = screen.getByText('Daily').closest('.sb-file');
+    if (!row) throw new Error('file row not found');
+    await userEvent.click(within(row as HTMLElement).getByRole('button', { name: 'Daily の操作' }));
+    await userEvent.click(screen.getByText('パスをコピー'));
+
+    expect(writeText).toHaveBeenCalledWith('/Users/example/notes/daily/note.md');
+  });
+
+  it('フォルダのパスをコピーでき、フォルダ開閉クリックとして扱わない', async () => {
+    const writeText = stubClipboard();
+    const onToggle = vi.fn();
+    render(
+      <Sidebar
+        tree={{
+          name: '',
+          path: '',
+          type: 'folder',
+          children: [
+            {
+              name: 'daily',
+              path: 'daily',
+              type: 'folder',
+              children: [{ name: 'note.md', path: 'daily/note.md', type: 'file', title: 'Daily' }],
+            },
+          ],
+        }}
+        expanded={new Set()}
+        currentPath=""
+        onToggle={onToggle}
+        onOpen={() => {}}
+        onNew={() => {}}
+        onExport={() => {}}
+        onDelete={() => {}}
+        onRename={() => {}}
+        count={1}
+        mountPath="/Users/example/notes"
+      />
+    );
+
+    const row = screen.getByText('daily').closest('.sb-folder');
+    if (!row) throw new Error('folder row not found');
+    await userEvent.click(within(row as HTMLElement).getByRole('button', { name: 'daily の操作' }));
+    expect(onToggle).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByText('パスをコピー'));
+
+    expect(writeText).toHaveBeenCalledWith('/Users/example/notes/daily');
+    expect(onToggle).not.toHaveBeenCalled();
   });
 });
