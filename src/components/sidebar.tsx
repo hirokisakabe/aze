@@ -150,6 +150,7 @@ export function Sidebar({
     y: number;
     node: TreeNodeData;
   } | null>(null);
+  const [copyError, setCopyError] = useState('');
   const ctxRef = useRef<HTMLDivElement>(null);
   const copyMenuItemRef = useRef<HTMLButtonElement | null>(null);
   const renameMenuItemRef = useRef<HTMLButtonElement | null>(null);
@@ -158,6 +159,7 @@ export function Sidebar({
 
   const closeMenu = (restoreFocus = false) => {
     setCtxMenu(null);
+    setCopyError('');
     if (restoreFocus) {
       triggerButtonRef.current?.focus();
     }
@@ -205,6 +207,7 @@ export function Sidebar({
     }
     triggerButtonRef.current = trigger;
     const rect = trigger.getBoundingClientRect();
+    setCopyError('');
     setCtxMenu({ x: rect.right - 4, y: rect.bottom + 4, node });
   };
 
@@ -236,13 +239,19 @@ export function Sidebar({
     }
   };
 
-  const handleCopyPath = () => {
+  const handleCopyPath = async () => {
     if (!ctxMenu) return;
     const value = copyablePath(ctxMenu.node.path, mountPath);
-    if (navigator.clipboard) {
-      void navigator.clipboard.writeText(value);
+    if (!navigator.clipboard) {
+      setCopyError('クリップボードへコピーできませんでした。');
+      return;
     }
-    closeMenu(true);
+    try {
+      await navigator.clipboard.writeText(value);
+      closeMenu(true);
+    } catch {
+      setCopyError('クリップボードへコピーできませんでした。');
+    }
   };
 
   const handleDelete = () => {
@@ -336,6 +345,11 @@ export function Sidebar({
             <Copy width={13} height={13} aria-hidden="true" />
             パスをコピー
           </button>
+          {copyError ? (
+            <div className="sb-ctx-error" role="alert">
+              {copyError}
+            </div>
+          ) : null}
           {ctxMenu.node.type === 'file' && (
             <button
               ref={renameMenuItemRef}

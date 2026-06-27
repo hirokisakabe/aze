@@ -1,6 +1,6 @@
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import { db } from '../repository/db';
 import {
@@ -17,8 +17,17 @@ import { Sidebar } from './sidebar';
 
 resetStateBeforeEach();
 
-function stubClipboard() {
-  const writeText = vi.fn<Clipboard['writeText']>().mockResolvedValue(undefined);
+const originalClipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+
+afterEach(() => {
+  if (originalClipboardDescriptor) {
+    Object.defineProperty(navigator, 'clipboard', originalClipboardDescriptor);
+  } else {
+    delete (navigator as { clipboard?: Clipboard }).clipboard;
+  }
+});
+
+function stubClipboard(writeText = vi.fn<Clipboard['writeText']>().mockResolvedValue(undefined)) {
   Object.defineProperty(navigator, 'clipboard', {
     configurable: true,
     value: { writeText },
@@ -89,6 +98,23 @@ describe('ノート行のメニューからノートを操作できる', () => {
 
     expect(writeText).toHaveBeenCalledWith('note-a.md');
     expect(screen.queryByRole('menu')).toBeNull();
+  });
+
+  it('ファイル行のパスコピーに失敗した場合はメニュー内にエラーを表示する', async () => {
+    const writeText = vi.fn<Clipboard['writeText']>().mockRejectedValue(new Error('denied'));
+    stubClipboard(writeText);
+    await db.notes.bulkPut([NOTE_A]);
+    render(<App />);
+
+    await findSidebarText('Note A');
+    await openNoteActions('Note A');
+    await userEvent.click(screen.getByText('パスをコピー'));
+
+    await screen.findByRole('alert');
+    expect(screen.getByRole('alert').textContent).toContain(
+      'クリップボードへコピーできませんでした。'
+    );
+    expect(screen.getByRole('menu')).not.toBeNull();
   });
 
   it('開いている操作ボタンをもう一度押すとメニューを閉じる', async () => {
