@@ -198,7 +198,7 @@ export function Sidebar({
     if (clampedX !== ctxMenu.x || clampedY !== ctxMenu.y) {
       setCtxMenu({ ...ctxMenu, x: clampedX, y: clampedY });
     }
-  }, [ctxMenu]);
+  }, [ctxMenu, copyError]);
 
   const handleOpenMenu = (trigger: HTMLButtonElement, node: TreeNodeData) => {
     if (ctxMenu?.node.path === node.path) {
@@ -330,50 +330,50 @@ export function Sidebar({
       {ctxMenu && (
         <div
           ref={ctxRef}
-          className="sb-ctx-menu"
-          role="menu"
-          onKeyDown={handleMenuKeyDown}
+          className="sb-ctx-popover"
           style={{ left: ctxMenu.x, top: ctxMenu.y }}
         >
-          <button
-            ref={copyMenuItemRef}
-            className="sb-ctx-item"
-            type="button"
-            role="menuitem"
-            onClick={handleCopyPath}
-          >
-            <Copy width={13} height={13} aria-hidden="true" />
-            パスをコピー
-          </button>
-          {copyError ? (
-            <div className="sb-ctx-error" role="alert">
-              {copyError}
-            </div>
-          ) : null}
-          {ctxMenu.node.type === 'file' && (
+          <div className="sb-ctx-menu" role="menu" onKeyDown={handleMenuKeyDown}>
             <button
-              ref={renameMenuItemRef}
+              ref={copyMenuItemRef}
               className="sb-ctx-item"
               type="button"
               role="menuitem"
-              onClick={handleRename}
+              onClick={handleCopyPath}
             >
-              <Pencil width={13} height={13} aria-hidden="true" />
-              パス変更
+              <Copy width={13} height={13} aria-hidden="true" />
+              パスをコピー
             </button>
-          )}
-          {ctxMenu.node.type === 'file' && (
-            <button
-              ref={deleteMenuItemRef}
-              className="sb-ctx-item sb-ctx-delete"
-              type="button"
-              role="menuitem"
-              onClick={handleDelete}
-            >
-              <Trash2 width={13} height={13} aria-hidden="true" />
-              削除
-            </button>
-          )}
+            {ctxMenu.node.type === 'file' && (
+              <button
+                ref={renameMenuItemRef}
+                className="sb-ctx-item"
+                type="button"
+                role="menuitem"
+                onClick={handleRename}
+              >
+                <Pencil width={13} height={13} aria-hidden="true" />
+                パス変更
+              </button>
+            )}
+            {ctxMenu.node.type === 'file' && (
+              <button
+                ref={deleteMenuItemRef}
+                className="sb-ctx-item sb-ctx-delete"
+                type="button"
+                role="menuitem"
+                onClick={handleDelete}
+              >
+                <Trash2 width={13} height={13} aria-hidden="true" />
+                削除
+              </button>
+            )}
+          </div>
+          {copyError ? (
+            <div className="sb-ctx-error" role="alert" aria-live="polite">
+              {copyError}
+            </div>
+          ) : null}
         </div>
       )}
     </aside>

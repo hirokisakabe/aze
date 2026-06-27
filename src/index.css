@@ -872,7 +872,7 @@ kbd {
 }
 
 /* context menu */
-.sb-ctx-menu {
+.sb-ctx-popover {
   position: fixed;
   z-index: 200;
   background: var(--panel);
