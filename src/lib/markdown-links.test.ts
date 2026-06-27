@@ -33,6 +33,20 @@ describe('resolveRelativeMarkdownNotePath', () => {
       'folder/other.md'
     );
   });
+
+  it('URL エンコードされた path segment をノート path に戻す', () => {
+    expect(resolveRelativeMarkdownNotePath('folder/current.md', './My%20Note.md')).toBe(
+      'folder/My Note.md'
+    );
+    expect(
+      resolveRelativeMarkdownNotePath('folder/current.md', './%E6%97%A5%E6%9C%AC%E8%AA%9E.md')
+    ).toBe('folder/日本語.md');
+  });
+
+  it('不正な URL エンコードや slash を含む encoded segment は解決しない', () => {
+    expect(resolveRelativeMarkdownNotePath('folder/current.md', './bad%zz.md')).toBeNull();
+    expect(resolveRelativeMarkdownNotePath('folder/current.md', './nested%2Fnote.md')).toBeNull();
+  });
 });
 
 describe('resolveMarkdownNoteLink', () => {
