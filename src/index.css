@@ -10,6 +10,8 @@
   --gutter: #e8eaee;
   --hover: #e9ebef;
   --accent: #5b6b86;
+  --link: #40516e;
+  --link-hover: #2f405c;
 
   --sans: 'Zen Kaku Gothic New', system-ui, sans-serif;
   --mono: 'DM Mono', 'Zen Kaku Gothic New', ui-monospace, monospace;
@@ -408,12 +410,10 @@ body {
 .md-h3 {
   font-size: 1.08em;
   margin: 1.05em 0 0.32em;
-  color: var(--ink-soft);
 }
 .md-h4 {
   font-size: 1em;
   margin: 0.95em 0 0.25em;
-  color: var(--ink-soft);
 }
 .md-p {
   margin: 0 0 0.78em;
@@ -536,13 +536,14 @@ ul.md-list:not(.md-tasklist) > li::before {
   margin: 1.05em 0;
 }
 .md-link {
-  color: var(--accent);
+  color: var(--link);
   text-decoration: none;
-  border-bottom: 1px solid color-mix(in oklab, var(--accent) 35%, transparent);
+  border-bottom: 1px solid color-mix(in oklab, var(--link) 40%, transparent);
   cursor: pointer;
 }
 .md-link:hover {
-  border-bottom-color: var(--accent);
+  color: var(--link-hover);
+  border-bottom-color: var(--link-hover);
 }
 .md-img {
   display: block;
