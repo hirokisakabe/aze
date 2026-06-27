@@ -246,8 +246,8 @@ body {
     color 0.12s ease,
     opacity 0.12s ease;
 }
-.sb-file:hover .sb-action,
-.sb-file:focus-within .sb-action,
+.sb-row:hover .sb-action,
+.sb-row:focus-within .sb-action,
 .sb-file.is-active .sb-action {
   opacity: 1;
 }
@@ -872,7 +872,7 @@ kbd {
 }
 
 /* context menu */
-.sb-ctx-menu {
+.sb-ctx-popover {
   position: fixed;
   z-index: 200;
   background: var(--panel);
@@ -901,6 +901,13 @@ kbd {
 .sb-ctx-item:focus-visible {
   background: var(--hover);
   outline: none;
+}
+.sb-ctx-error {
+  max-width: 190px;
+  padding: 6px 8px 7px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #c0392b;
 }
 .sb-ctx-delete {
   color: #c0392b;

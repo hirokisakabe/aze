@@ -1,5 +1,6 @@
 import {
   ChevronRight,
+  Copy,
   Plus,
   Download,
   ExternalLink,
@@ -18,7 +19,7 @@ interface TreeNodeProps {
   menuPath: string | null;
   onToggle: (path: string) => void;
   onOpen: (path: string) => void;
-  onOpenMenu: (trigger: HTMLButtonElement, path: string) => void;
+  onOpenMenu: (trigger: HTMLButtonElement, node: TreeNodeData) => void;
 }
 
 function TreeNode({
@@ -51,6 +52,19 @@ function TreeNode({
             />
           </span>
           <span className="sb-name">{node.name}</span>
+          <button
+            className="sb-action"
+            type="button"
+            aria-label={`${node.name} の操作`}
+            aria-haspopup="menu"
+            aria-expanded={menuPath === node.path}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenMenu(e.currentTarget, node);
+            }}
+          >
+            <MoreHorizontal width={14} height={14} aria-hidden="true" />
+          </button>
         </div>
         {open && (
           <div className="sb-children">
@@ -87,7 +101,7 @@ function TreeNode({
         aria-expanded={menuPath === node.path}
         onClick={(e) => {
           e.stopPropagation();
-          onOpenMenu(e.currentTarget, node.path);
+          onOpenMenu(e.currentTarget, node);
         }}
       >
         <MoreHorizontal width={14} height={14} aria-hidden="true" />
@@ -110,6 +124,14 @@ interface SidebarProps {
   mountPath?: string;
 }
 
+function copyablePath(path: string, mountPath?: string): string {
+  if (!mountPath) return path;
+  const separator = mountPath.includes('\\') ? '\\' : '/';
+  const trimmedMountPath = mountPath.replace(/[\\/]+$/, '');
+  const normalizedPath = separator === '\\' ? path.replace(/\//g, '\\') : path;
+  return normalizedPath ? `${trimmedMountPath}${separator}${normalizedPath}` : trimmedMountPath;
+}
+
 export function Sidebar({
   tree,
   expanded,
@@ -123,14 +145,21 @@ export function Sidebar({
   count,
   mountPath,
 }: SidebarProps) {
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; path: string } | null>(null);
+  const [ctxMenu, setCtxMenu] = useState<{
+    x: number;
+    y: number;
+    node: TreeNodeData;
+  } | null>(null);
+  const [copyError, setCopyError] = useState('');
   const ctxRef = useRef<HTMLDivElement>(null);
-  const firstMenuItemRef = useRef<HTMLButtonElement | null>(null);
-  const secondMenuItemRef = useRef<HTMLButtonElement | null>(null);
+  const copyMenuItemRef = useRef<HTMLButtonElement | null>(null);
+  const renameMenuItemRef = useRef<HTMLButtonElement | null>(null);
+  const deleteMenuItemRef = useRef<HTMLButtonElement | null>(null);
   const triggerButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const closeMenu = (restoreFocus = false) => {
     setCtxMenu(null);
+    setCopyError('');
     if (restoreFocus) {
       triggerButtonRef.current?.focus();
     }
@@ -151,7 +180,7 @@ export function Sidebar({
 
   useEffect(() => {
     if (!ctxMenu) return;
-    firstMenuItemRef.current?.focus();
+    copyMenuItemRef.current?.focus();
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         closeMenu(true);
@@ -169,22 +198,25 @@ export function Sidebar({
     if (clampedX !== ctxMenu.x || clampedY !== ctxMenu.y) {
       setCtxMenu({ ...ctxMenu, x: clampedX, y: clampedY });
     }
-  }, [ctxMenu]);
+  }, [ctxMenu, copyError]);
 
-  const handleOpenMenu = (trigger: HTMLButtonElement, path: string) => {
-    if (ctxMenu?.path === path) {
+  const handleOpenMenu = (trigger: HTMLButtonElement, node: TreeNodeData) => {
+    if (ctxMenu?.node.path === node.path) {
       closeMenu(true);
       return;
     }
     triggerButtonRef.current = trigger;
     const rect = trigger.getBoundingClientRect();
-    setCtxMenu({ x: rect.right - 4, y: rect.bottom + 4, path });
+    setCopyError('');
+    setCtxMenu({ x: rect.right - 4, y: rect.bottom + 4, node });
   };
 
   const handleMenuKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    const items = [firstMenuItemRef.current, secondMenuItemRef.current].filter(
-      (item): item is HTMLButtonElement => item !== null
-    );
+    const items = [
+      copyMenuItemRef.current,
+      renameMenuItemRef.current,
+      deleteMenuItemRef.current,
+    ].filter((item): item is HTMLButtonElement => item !== null);
     if (items.length === 0) return;
 
     const currentIndex = Math.max(
@@ -207,9 +239,24 @@ export function Sidebar({
     }
   };
 
+  const handleCopyPath = async () => {
+    if (!ctxMenu) return;
+    const value = copyablePath(ctxMenu.node.path, mountPath);
+    if (!navigator.clipboard) {
+      setCopyError('クリップボードへコピーできませんでした。');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(value);
+      closeMenu(true);
+    } catch {
+      setCopyError('クリップボードへコピーできませんでした。');
+    }
+  };
+
   const handleDelete = () => {
     if (!ctxMenu) return;
-    const { path } = ctxMenu;
+    const { path } = ctxMenu.node;
     setCtxMenu(null);
     if (window.confirm(`「${path}」を削除しますか？`)) {
       onDelete(path);
@@ -218,7 +265,7 @@ export function Sidebar({
 
   const handleRename = () => {
     if (!ctxMenu) return;
-    const { path } = ctxMenu;
+    const { path } = ctxMenu.node;
     setCtxMenu(null);
     onRename(path);
   };
@@ -239,7 +286,7 @@ export function Sidebar({
             node={c}
             expanded={expanded}
             currentPath={currentPath}
-            menuPath={ctxMenu?.path ?? null}
+            menuPath={ctxMenu?.node.path ?? null}
             onToggle={onToggle}
             onOpen={onOpen}
             onOpenMenu={handleOpenMenu}
@@ -281,33 +328,48 @@ export function Sidebar({
       </div>
 
       {ctxMenu && (
-        <div
-          ref={ctxRef}
-          className="sb-ctx-menu"
-          role="menu"
-          onKeyDown={handleMenuKeyDown}
-          style={{ left: ctxMenu.x, top: ctxMenu.y }}
-        >
-          <button
-            ref={firstMenuItemRef}
-            className="sb-ctx-item"
-            type="button"
-            role="menuitem"
-            onClick={handleRename}
-          >
-            <Pencil width={13} height={13} aria-hidden="true" />
-            パス変更
-          </button>
-          <button
-            ref={secondMenuItemRef}
-            className="sb-ctx-item sb-ctx-delete"
-            type="button"
-            role="menuitem"
-            onClick={handleDelete}
-          >
-            <Trash2 width={13} height={13} aria-hidden="true" />
-            削除
-          </button>
+        <div ref={ctxRef} className="sb-ctx-popover" style={{ left: ctxMenu.x, top: ctxMenu.y }}>
+          <div className="sb-ctx-menu" role="menu" onKeyDown={handleMenuKeyDown}>
+            <button
+              ref={copyMenuItemRef}
+              className="sb-ctx-item"
+              type="button"
+              role="menuitem"
+              onClick={handleCopyPath}
+            >
+              <Copy width={13} height={13} aria-hidden="true" />
+              パスをコピー
+            </button>
+            {ctxMenu.node.type === 'file' && (
+              <button
+                ref={renameMenuItemRef}
+                className="sb-ctx-item"
+                type="button"
+                role="menuitem"
+                onClick={handleRename}
+              >
+                <Pencil width={13} height={13} aria-hidden="true" />
+                パス変更
+              </button>
+            )}
+            {ctxMenu.node.type === 'file' && (
+              <button
+                ref={deleteMenuItemRef}
+                className="sb-ctx-item sb-ctx-delete"
+                type="button"
+                role="menuitem"
+                onClick={handleDelete}
+              >
+                <Trash2 width={13} height={13} aria-hidden="true" />
+                削除
+              </button>
+            )}
+          </div>
+          {copyError ? (
+            <div className="sb-ctx-error" role="alert" aria-live="polite">
+              {copyError}
+            </div>
+          ) : null}
         </div>
       )}
     </aside>
