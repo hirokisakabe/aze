@@ -273,7 +273,6 @@ export function Sidebar({
   return (
     <aside className="sidebar">
       <div className="sb-brand">
-        <span className="brand-mark" aria-hidden="true"></span>
         <span className="brand-name">aze</span>
         <button className="sb-new" title="新規ノート（N）" onClick={onNew} aria-label="新規ノート">
           <Plus width={14} height={14} aria-hidden="true" />
