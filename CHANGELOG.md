@@ -1,5 +1,11 @@
 # aze-cli
 
+## 0.5.3
+
+### Patch Changes
+
+- 0c3ae37: Remove the decorative brand dot from the sidebar header.
+
 ## 0.5.2
 
 ### Patch Changes
