@@ -12,6 +12,7 @@ import {
   parseServeArgs,
   runCli,
   serve,
+  serveUrl,
   serverErrorMessage,
   stripApiPrefix,
   validateNotesDir,
@@ -151,6 +152,12 @@ describe('parseServeArgs', () => {
 describe('VERSION', () => {
   it('package.json の version と一致する (手書き定数で二重管理しない)', () => {
     expect(VERSION).toBe(pkg.version);
+  });
+});
+
+describe('serveUrl', () => {
+  it('localhost を使ったブラウザ向け URL を返す', () => {
+    expect(serveUrl(4321)).toBe('http://localhost:4321');
   });
 });
 

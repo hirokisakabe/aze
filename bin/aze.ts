@@ -18,6 +18,7 @@ import { createFsNotesHandler, expandHome } from '../src/server/fs-notes-handler
  */
 
 const HOST = '127.0.0.1';
+const DISPLAY_HOST = 'localhost';
 const DEFAULT_PORT = 4321;
 const API_PREFIX = '/api/notes';
 
@@ -26,6 +27,10 @@ const API_PREFIX = '/api/notes';
  * 埋め込む (esbuild が JSON import をインライン化する)。手書きの定数で二重管理しない。
  */
 export const VERSION: string = pkg.version;
+
+export function serveUrl(port: number): string {
+  return `http://${DISPLAY_HOST}:${port}`;
+}
 
 interface ServeOptions {
   notesDir: string;
@@ -193,7 +198,7 @@ export function serve(options: ServeOptions): void {
 
   // 127.0.0.1 にのみバインドし、ネットワークへは公開しない。
   server.listen(options.port, HOST, () => {
-    console.log(`aze serve → http://${HOST}:${options.port}`);
+    console.log(`aze serve → ${serveUrl(options.port)}`);
     console.log(`  notes: ${notesRoot}`);
   });
 }
