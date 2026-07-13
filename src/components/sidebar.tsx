@@ -92,7 +92,9 @@ function TreeNode({
       onClick={() => onOpen(node.path)}
     >
       <span className="sb-twirl sb-twirl-empty" aria-hidden="true" />
-      <span className="sb-name">{displayName}</span>
+      <span className="sb-name" title={displayName}>
+        {displayName}
+      </span>
       <button
         className="sb-action"
         type="button"

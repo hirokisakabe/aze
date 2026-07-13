@@ -153,3 +153,37 @@ describe('サイドバー下部のリンク', () => {
     expect(mount.getAttribute('title')).toBe(mountPath);
   });
 });
+
+describe('サイドバーの表示名', () => {
+  it('ホバー時に省略前の名前を確認できる', () => {
+    const displayName = 'とても長い名前のノート';
+    render(
+      <Sidebar
+        tree={{
+          name: '',
+          path: '',
+          type: 'folder',
+          children: [
+            {
+              name: 'very-long-note-name.md',
+              path: 'very-long-note-name.md',
+              type: 'file',
+              title: displayName,
+            },
+          ],
+        }}
+        expanded={new Set()}
+        currentPath=""
+        onToggle={() => {}}
+        onOpen={() => {}}
+        onNew={() => {}}
+        onExport={() => {}}
+        onDelete={() => {}}
+        onRename={() => {}}
+        count={1}
+      />
+    );
+
+    expect(screen.getByText(displayName).getAttribute('title')).toBe(displayName);
+  });
+});
