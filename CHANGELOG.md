@@ -1,5 +1,12 @@
 # aze-cli
 
+## 0.5.4
+
+### Patch Changes
+
+- 140503d: `aze serve` の起動時に表示する URL を `localhost` 表記に変更する
+- 3a42dd0: サイドバーで省略された長い表示名をホバーして全文確認できるようにする
+
 ## 0.5.3
 
 ### Patch Changes
