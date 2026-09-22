@@ -1,5 +1,11 @@
 # aze-cli
 
+## 0.5.5
+
+### Patch Changes
+
+- 2a3c32e: 起動時の表示を `local:` と `notes:` の簡潔な形式に変更する。
+
 ## 0.5.4
 
 ### Patch Changes
