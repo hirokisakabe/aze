@@ -8,11 +8,19 @@
 
 - Node.js 24 以上
 
+## インストール
+
+```sh
+npm install -g aze-cli
+```
+
 ## 使い方
 
 `aze serve <notes>` でローカルサーバーが起動し、ブラウザ上のエディタでそのディレクトリの Markdown を編集できる。
 
 ```sh
-npx aze-cli serve ./notes
-npx aze-cli serve ./notes --port 4321     # ポート指定 (default: 4321)
+aze serve ./notes
+aze serve ./notes --port 4321     # ポート指定 (default: 4321)
 ```
+
+インストールせずに試す場合は、`npx aze-cli serve ./notes` でも実行できる。
