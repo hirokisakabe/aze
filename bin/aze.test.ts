@@ -11,6 +11,7 @@ import {
   isCliEntry,
   parseServeArgs,
   runCli,
+  serveReadyMessage,
   serve,
   serveUrl,
   serverErrorMessage,
@@ -158,6 +159,14 @@ describe('VERSION', () => {
 describe('serveUrl', () => {
   it('localhost を使ったブラウザ向け URL を返す', () => {
     expect(serveUrl(4321)).toBe('http://localhost:4321');
+  });
+});
+
+describe('serveReadyMessage', () => {
+  it('local URL と notes ディレクトリをラベル付きで表示する', () => {
+    expect(serveReadyMessage(4321, '/path/to/notes')).toBe(
+      'local: http://localhost:4321\nnotes: /path/to/notes'
+    );
   });
 });
 
