@@ -32,6 +32,10 @@ export function serveUrl(port: number): string {
   return `http://${DISPLAY_HOST}:${port}`;
 }
 
+export function serveReadyMessage(port: number, notesRoot: string): string {
+  return `local: ${serveUrl(port)}\nnotes: ${notesRoot}`;
+}
+
 interface ServeOptions {
   notesDir: string;
   port: number;
@@ -198,8 +202,7 @@ export function serve(options: ServeOptions): void {
 
   // 127.0.0.1 にのみバインドし、ネットワークへは公開しない。
   server.listen(options.port, HOST, () => {
-    console.log(`aze serve → ${serveUrl(options.port)}`);
-    console.log(`  notes: ${notesRoot}`);
+    console.log(serveReadyMessage(options.port, notesRoot));
   });
 }
 
